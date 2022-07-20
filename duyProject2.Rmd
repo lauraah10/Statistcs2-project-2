@@ -1,0 +1,300 @@
+---
+title: "Personal Loan Analysis: Project 2 Stats 2 DataScience@SMU Summer 2022"
+author: "Laura Ahumada, Erin McClure-Price, Duy Nguyen"
+date: "07/16/2022"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries
+```{r, warning=F, message=F}
+library(tidyverse)
+# library(psych)          # describe()
+library(DataExplorer)   # plot_missing() | drop_columns()
+library(caret)          # nearZeroVar() | knnreg()
+# library(inspectdf)      # inspect_cat() | show_plots()
+# library(ggstance)       # geom_boxploth()
+# library(corrplot)       # corrplot() | cor()
+# library(ggpubr)         # ggscatter()
+library(MASS)           # stepAIC()
+# library(regclass)       # vif()
+# library(leaps)          # regsubsets()
+library(ggplot2)        # ggplot()
+library(glmtoolbox)       # hltest()
+# library(purrr)          # map()
+library(GGally)         # ggcorr() | ggpairs()
+library(lindia)         # gg_cooksd() | gg_scalelocation
+library(gridExtra)      # grid.arrange
+# library(FNN)            # knn.reg()
+# library(Metrics)        # mse()
+library(glmnet)           # 
+library(ROCR)             # prediction() | performance()
+library(stats)            # logLik()
+library(regclass)         # vif()
+
+```
+
+## Import Data
+```{r}
+getwd()
+df = read.csv("Bank_Personal_Loan_Modelling.csv")
+
+```
+
+## EDA
+```{r}
+str(df)
+
+# Identification Columns (ID and ZIP.Code)
+df = df[-c(1,5)]
+str(df)
+
+# Naturally Factor Variables
+factor_vars = c("Family", "Education", "Personal.Loan", 
+                "Securities.Account", "CD.Account", "Online", "CreditCard")
+df[factor_vars] = lapply(df[factor_vars], as.factor)
+str(df)
+
+# missing values
+plot_missing(df)
+
+# near zero variance
+nearZeroVar(df, names = TRUE)
+df = df[-c(nearZeroVar(df))]
+str(df)
+
+# multicollinearity
+ggcorr(df, label = T)
+## Age and Experience have correlation of 1
+ggplot( df, aes(Experience, Age)) + geom_point()
+ggplot(df, aes(Experience/Age)) + geom_histogram()
+df = df %>% mutate(Experience2 = Experience/Age)
+df = df[-c(1,2)] # getting rid of Age and Experience
+str(df)
+ggcorr(df, label = T)
+```
+
+```{r, message=F}
+# pairs plots
+#newAuto$mpg<-factor(ifelse(Auto$mpg>median(Auto$mpg),"High","Low"),levels=c("Low","High"))   # used for numeric outcome into categorical outcome (using median)
+              # kept for future reference
+levels(df$Personal.Loan) = c("No", "Yes")
+ggpairs(df, aes(colour = Personal.Loan))
+
+## Using the trick of already knowing what my stepwise logistic regression model consists of in terms of coefficients (which are Income, Family, CCAvg, Education, Securities.Account, CD.Account, Online, and CreditCard) I can pretend to say that the following variables can be considered in our model for Objective 1 to predict whether if a customer will accept a personal loan offer or not.
+
+## We can see that, for variables with multiple levels, the levels with even a slight change compared to the reference level (1st level) are found as significant to our stepwise logistic regression model.
+
+# This determines green is yes.
+#plot(df$Personal.Loan, col = c("blue", "green")) 
+par(mfrow=c(2,3))
+plot(Personal.Loan ~ ., data = df, col=c("blue", "green"))
+
+```
+
+## Train Test Split
+```{r}
+set.seed(123)
+
+split = sample(nrow(df), nrow(df)*0.7)
+
+train = df[split,]
+test = df[-split,]
+
+```
+
+# Objective 1: Logistic Regression Model
+```{r}
+premodel = glm(Personal.Loan ~ ., data = train, family = "binomial")
+
+# feature selection - stepwise
+stepAIC(premodel, direction = "both")
+
+model1 = glm(formula = Personal.Loan ~ Income + Family + CCAvg + Education + 
+    Securities.Account + CD.Account + Online + CreditCard, family = "binomial", 
+    data = train)
+
+```
+
+### Hypothesis Testing
+```{r}
+summary(model1)
+
+# As the p-values of all variables used in model1, aside from Family2, are all less than 0.05, none of them are insignificant in our logistic regression model.
+```
+
+### Criterion
+```{r}
+# -2 log likelihood = 794.0738
+-2*logLik(model1)[1]
+
+# AIC = 818.07
+AIC(model1)
+
+# BIC = 892
+BIC(model1)
+```
+
+### Verify Predictions Manually
+```{r}
+# Holding the upcoming predictions accountable
+prop.table(table(df$Personal.Loan))
+prop.table(table(train$Personal.Loan))
+prop.table(table(test$Personal.Loan))
+
+# This means that, 
+# it is preffered that our predictions are 90% no loan and 10% yes loan.
+
+pred.step = predict(model1, test)
+## predictions less than 0.5 = no personal loan
+class.step = as.factor(if_else(pred.step < 0.3, "No", "Yes"))
+#pred = as.factor(if_else(pred < 0.3, 0, 1))
+prop.table(table(class.step))
+
+# Confusion Matrix
+confusionMatrix(class.step, test$Personal.Loan)
+```
+
+### Assumptions via PLOTS
+```{r}
+par(mfrow = c(1, 2))
+#Cook's Distance Plot
+plot(model1, 4)
+
+#Standardized Residuals vs Leverage
+plot(model1, 5)
+par(mfrow = c(1, 1))
+
+```
+
+### Interpretations and Confidence Intervals
+```{r}
+# interpret as log odds & confidence intervals
+format(exp(cbind("Odds Ratio" = coef(model1), 
+                 confint.default(model1, level = 0.95))),
+       scientific = F)
+
+# Holding all other variables constant, 
+### an increase of $1,000 in a customer's income is associated with an increase of 6.58871% in the odds of them accepting a personal loan offer.
+### ...
+### customers with a family size of 3 have a 5.83 times the odds of those who don't of accepting a personal loan offer.
+### customers with a securities account have a .49 times the odds of those who don't of accepting a personal loan offer.
+### ...
+
+# vifs
+VIF(model1)
+## all variables seem to be valid since none are above 5 or 10
+
+```
+
+## Objective 1: LASSO Penalized Logistic Regression Model
+```{r}
+dat.train.x = model.matrix(Personal.Loan ~ Income + Family + CCAvg + Education + Securities.Account + CD.Account + Online + CreditCard + Experience2, train)
+dat.train.y = train$Personal.Loan
+
+cvfit = cv.glmnet(dat.train.x, dat.train.y, family = "binomial", type.measure = "class", nlambda = 1000)
+plot(cvfit)
+coef(cvfit, s = "lambda.min")
+# CV misclassification error rate is little below .10
+cvfit$cvm[which(cvfit$lambda==cvfit$lambda.min)]
+
+# Optimal penalty
+cvfit$lambda.min
+
+# For final model predictions go ahead and refit lasso using entire data set
+LASSOmodel<-glmnet(dat.train.x, dat.train.y, family = "binomial",lambda=cvfit$lambda.min)
+
+# Predict
+dat.test.x = model.matrix(Personal.Loan ~ Income + Family + CCAvg + Education + Securities.Account + CD.Account + Online + CreditCard + Experience2, test)
+fit.pred.lasso = predict(LASSOmodel, newx = dat.test.x, type = "response")
+cutoff = 0.5
+class.lasso = as.factor(if_else(fit.pred.lasso < cutoff, "No", "Yes"))
+
+# Confusion Matrix for Lasso
+conf.lasso = table(class.lasso, test$Personal.Loan)
+conf.lasso
+
+# Accuracy of LASSO
+sum(diag(conf.lasso))/sum(conf.lasso)
+
+```
+
+## Objective 1: Erin's Model based on intuition
+```{r}
+mod4 = glm(formula = Personal.Loan ~ CreditCard + Family + CD.Account + Education + Income,
+           family = "binomial", data = train)
+summary(mod4)
+
+pred.erin = predict(mod4, test, type = "response")
+## predictions less than 0.5 = no personal loan
+class.erin = as.factor(if_else(pred.erin < 0.3, "No", "Yes"))
+prop.table(table(class.erin))
+confusionMatrix(class.erin, test$Personal.Loan)
+
+# Criterion
+-2*logLik(mod4)[1] # 818.8792
+AIC(mod4)          # 836.8792
+BIC(mod4)          # 892.3239
+
+```
+
+## Objective 1: Origin Model (Income Only)
+```{r}
+model_income = glm(formula = Personal.Loan ~ Income, family = "binomial", data = train)
+summary(model_income)
+
+pred.income = predict(model_income, test, type = "response")
+## predictions less than 0.5 = no personal loan
+class.income = as.factor(if_else(pred.income < 0.3, "No", "Yes"))
+prop.table(table(class.income))
+confusionMatrix(class.income, test$Personal.Loan)
+
+# Criterion
+-2*logLik(model_income)[1] # 1407.45
+AIC(model_income)          # 1411.45
+BIC(model_income)          # 1423.771
+```
+
+### Comparing ROCR Curves
+```{r}
+# Stepwise
+pred_prob = predict(model1, test, type = "response")
+test_label = df[-split, "Personal.Loan"]
+results.step = prediction(pred_prob, test_label)
+roc.step = performance(results.step, measure = "tpr", x.measure = "fpr")
+
+# LASSO
+results.lasso = prediction(fit.pred.lasso,
+                           test$Personal.Loan, 
+                           label.ordering=c("No", "Yes"))
+roc.lasso = performance(results.lasso, measure = "tpr", x.measure = "fpr")
+
+# Erin's Intuition
+results.erin = prediction(pred.erin, test_label)
+roc.erin = performance(results.erin, measure = "tpr", x.measure = "fpr")
+
+# Origin (Income Only)
+results.income = prediction(pred.income, test_label)
+roc.income = performance(results.income, measure = "tpr", x.measure = "fpr")
+
+plot(roc.step, col = "red")
+plot(roc.lasso, col = "green", add = TRUE)
+plot(roc.erin, col = "blue", add = TRUE)
+plot(roc.income, col = "pink", add = TRUE)
+legend("bottomright", legend = c("Stepwise", "Lasso", "Erin", "Origin"), 
+       col = c("red", "green","blue", "pink"), 
+       lty=1, lwd=1)
+abline(a=0, b= 1)
+
+```
+
+# Objective 2
+```{r}
+#log(df$Mortgage)
+```
+
