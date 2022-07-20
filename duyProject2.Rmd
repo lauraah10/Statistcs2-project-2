@@ -15,27 +15,26 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, warning=F, message=F}
 library(tidyverse)
 # library(psych)          # describe()
-library(DataExplorer)   # plot_missing() | drop_columns()
-library(caret)          # nearZeroVar() | knnreg()
+library(DataExplorer)     # plot_missing() | drop_columns()
+library(caret)            # nearZeroVar() | knnreg()
 # library(inspectdf)      # inspect_cat() | show_plots()
 # library(ggstance)       # geom_boxploth()
 # library(corrplot)       # corrplot() | cor()
 # library(ggpubr)         # ggscatter()
-library(MASS)           # stepAIC()
-# library(regclass)       # vif()
+library(MASS)             # stepAIC()
+library(regclass)         # vif()
 # library(leaps)          # regsubsets()
-library(ggplot2)        # ggplot()
+library(ggplot2)          # ggplot()
 library(glmtoolbox)       # hltest()
 # library(purrr)          # map()
-library(GGally)         # ggcorr() | ggpairs()
-library(lindia)         # gg_cooksd() | gg_scalelocation
-library(gridExtra)      # grid.arrange
+library(GGally)           # ggcorr() | ggpairs()
+library(lindia)           # gg_cooksd() | gg_scalelocation
+library(gridExtra)        # grid.arrange
 # library(FNN)            # knn.reg()
 # library(Metrics)        # mse()
-library(glmnet)           # 
+library(glmnet)           # cv.glmnet()
 library(ROCR)             # prediction() | performance()
 library(stats)            # logLik()
-library(regclass)         # vif()
 
 ```
 
@@ -91,9 +90,9 @@ ggpairs(df, aes(colour = Personal.Loan))
 ## We can see that, for variables with multiple levels, the levels with even a slight change compared to the reference level (1st level) are found as significant to our stepwise logistic regression model.
 
 # This determines green is yes.
-#plot(df$Personal.Loan, col = c("blue", "green")) 
+plot(df$Personal.Loan, col = c("blue", "green")) 
 par(mfrow=c(2,3))
-plot(Personal.Loan ~ ., data = df, col=c("blue", "green"))
+plot(Personal.Loan ~ ., data = df, col=c("green", "blue"))
 
 ```
 
@@ -130,14 +129,9 @@ summary(model1)
 
 ### Criterion
 ```{r}
-# -2 log likelihood = 794.0738
--2*logLik(model1)[1]
-
-# AIC = 818.07
-AIC(model1)
-
-# BIC = 892
-BIC(model1)
+-2*logLik(model1)[1] # -2LL = 794.0738
+AIC(model1)          #  AIC = 818.07
+BIC(model1)          #  BIC = 892
 ```
 
 ### Verify Predictions Manually
@@ -207,7 +201,7 @@ cvfit$cvm[which(cvfit$lambda==cvfit$lambda.min)]
 cvfit$lambda.min
 
 # For final model predictions go ahead and refit lasso using entire data set
-LASSOmodel<-glmnet(dat.train.x, dat.train.y, family = "binomial",lambda=cvfit$lambda.min)
+LASSOmodel = glmnet(dat.train.x, dat.train.y, family = "binomial",lambda=cvfit$lambda.min)
 
 # Predict
 dat.test.x = model.matrix(Personal.Loan ~ Income + Family + CCAvg + Education + Securities.Account + CD.Account + Online + CreditCard + Experience2, test)
@@ -221,6 +215,16 @@ conf.lasso
 
 # Accuracy of LASSO
 sum(diag(conf.lasso))/sum(conf.lasso)
+
+# Criterion of glmnet
+tLL = LASSOmodel$nulldev - deviance(LASSOmodel)
+k = LASSOmodel$df
+n = LASSOmodel$nobs
+
+tLL                             # -2LL = 1351.948
+-1*(-tLL+2*k+2*k*(k+1)/(n-k-1)) #  AIC = 1329.872
+-1*(log(n)*k - tLL)             #  BIC = 1262.182
+
 
 ```
 
@@ -237,9 +241,9 @@ prop.table(table(class.erin))
 confusionMatrix(class.erin, test$Personal.Loan)
 
 # Criterion
--2*logLik(mod4)[1] # 818.8792
-AIC(mod4)          # 836.8792
-BIC(mod4)          # 892.3239
+-2*logLik(mod4)[1] # -2LL = 818.8792
+AIC(mod4)          #  AIC = 836.8792
+BIC(mod4)          #  BIC = 892.3239
 
 ```
 
@@ -255,9 +259,9 @@ prop.table(table(class.income))
 confusionMatrix(class.income, test$Personal.Loan)
 
 # Criterion
--2*logLik(model_income)[1] # 1407.45
-AIC(model_income)          # 1411.45
-BIC(model_income)          # 1423.771
+-2*logLik(model_income)[1] # -2LL = 1407.45
+AIC(model_income)          #  AIC = 1411.45
+BIC(model_income)          #  BIC = 1423.771
 ```
 
 ### Comparing ROCR Curves
