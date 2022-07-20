@@ -282,14 +282,14 @@ roc.erin = performance(results.erin, measure = "tpr", x.measure = "fpr")
 results.income = prediction(pred.income, test_label)
 roc.income = performance(results.income, measure = "tpr", x.measure = "fpr")
 
-plot(roc.step, col = "red")
-plot(roc.lasso, col = "green", add = TRUE)
-plot(roc.erin, col = "blue", add = TRUE)
-plot(roc.income, col = "pink", add = TRUE)
-legend("bottomright", legend = c("Stepwise", "Lasso", "Erin", "Origin"), 
+plot(roc.step, col = "red", xlim = c(0, 0.3), ylim = c(0.5, 1.0))
+plot(roc.lasso, col = "green", add = TRUE, xlim = c(0, 0.3), ylim = c(0.5, 1.0))
+plot(roc.erin, col = "blue", add = TRUE, xlim = c(0, 0.3), ylim = c(0.5, 1.0))
+plot(roc.income, col = "pink", add = TRUE, xlim = c(0, 0.3), ylim = c(0.5, 1.0))
+legend("bottomright", legend = c("Stepwise", "Lasso", "Erin", "Origin (Income Only)"), 
        col = c("red", "green","blue", "pink"), 
        lty=1, lwd=1)
-abline(a=0, b= 1)
+#abline(a=0, b= 1)
 
 ```
 
