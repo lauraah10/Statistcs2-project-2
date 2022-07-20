@@ -1,0 +1,201 @@
+---
+title: "Project2"
+author: "ErinPrice"
+date: "7/18/2022"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+First we will read in the bank loan data and take a look, see what the data looks like and what type of data each column is..
+```{r}
+library(GGally)
+library(caret)
+bankloan <- read.csv("C:\\Users\\erinm\\Documents\\DS6372_Applied Statistics\\Project2\\Bank_Personal_Loan_Modelling.csv", header = TRUE)
+head(bankloan)
+str(bankloan)
+```
+Check the data for any NA entries
+```{r}
+anyNA(bankloan)
+```
+Some of the columns with numeric entries are categegorical and need to be changed into factors. In addition, we do not need ID since it adds nothing to the data, removing zipcode as well as there are too many categories to factor.
+```{r}
+library(dplyr)
+bank <- bankloan %>% mutate(Family=as.factor(Family), Education = as.factor(Education), Personal.Loan = as.factor(Personal.Loan), Securities.Account = as.factor(Securities.Account), CD.Account = as.factor(CD.Account), Online = as.factor(Online), CreditCard = as.factor(CreditCard)) %>% dplyr::select(-c(ID, ZIP.Code))
+
+head(bank)
+str(bank)
+```
+Checking multicollinearity...we see that age and experience have a remarkably strong correlation. 
+```{r}
+ggcorr(bank, label = TRUE)
+```
+```{r}
+plot(bank$Age, bank$Experience, xlab = "Age", ylab = "Experience")
+```
+Before we do anything drastic about the Experience and Age columns, let's see if there are any other columns we can leave out. Based on the summary of variables below, it looks like we could leave out Securities.Account (11% = no) and Cd.Account (6% = no). The Online variable also does not seem likely to effect the analysis, but for the time being we will leave these variables in the model.
+```{r}
+summary(bank)
+```
+One approach to dealing with multicollinearity is to "Linearly combine the independent variables, such as adding them together" (Frost: https://statisticsbyjim.com/regression/multicollinearity-in-regression-analysis/#comments). For curiosity's sake, we will try this approach with the Age and Experience variables in a new dataset.
+```{r}
+bank.exed <- bank %>% mutate(ExEd = Experience/Age) %>% dplyr::select(-c(Age, Experience))
+
+ggcorr(bank.exed, label = TRUE)
+```
+Maybe putting age and experience together was a mistake...
+Plot for those who took a loan
+```{r}
+library(GGally)
+ggpairs(bank.exed,columns=1:11,aes(colour=Personal.Loan==1))
+
+
+par(mfrow=c(2,3))
+plot(Personal.Loan~., data = PersonalLoan,col=c("pink","lightblue"))
+
+par(mfrow=c(2,3))
+plot(Personal.Loan~., data = bank.exed, col=c("pink", "lightblue"))
+
+```
+
+
+Checking the amount of No vs Yes entries in the Personal Loan variable shows that the variable is not balanced (90% no, 10% yes). So, we should balance the data. This will be done in a new data set so that we can revisit/compare....*Note*actually, after reading more about balancing data sets for LR, it appears that it only affects the intercept rather than the predictions, so this is not necessary.
+```{r}
+prop.table(table(bank.exed$Personal.Loan))
+```
+```{r}
+set.seed(1234)
+bank.bal <- downSample(x=bank.exed[, -ncol(bank.exed)],
+                       y=bank.exed$Personal.Loan,
+                       yname = "Personal.Loan")
+
+```
+Checking out summary data for those people who did get a loan
+```{r}
+summary(bank.exed$Personal.Loan)
+yes.loan <- bank.exed %>% filter(Personal.Loan==1)
+summary(yes.loan)
+hist(yes.loan$Income)
+```
+Split dataset into train/test
+```{r}
+set.seed(1234)
+
+dt <- sample(nrow(bank.exed), nrow(bank.exed)*.8)
+edex.train <- bank.exed[dt,]
+edex.test <- bank.exed[-dt,]
+```
+Create model with all available predictors...interesting that Family size of 2 is not statistically significant...more kids = higher spending = loan needs?
+
+```{r}
+#curious about the unmanipulated data set
+mod0 <- glm(formula = Personal.Loan ~., data = bank, family = "binomial")
+
+mod1 <- glm(formula = Personal.Loan ~., data = edex.train, family = "binomial")
+summary(mod1)
+```
+Next we will try some feature selection methods
+
+```{r}
+library(MASS)
+mod2 <- step(mod1, direction = "backward", trace = FALSE)
+summary(mod2)
+
+mod3 <- step(mod1, direction = "forward", trace = FALSE)
+summary(mod3)
+
+mod.aic <- stepAIC(mod1, direction = "both")
+summary(mod.aic)
+
+#model set with experience and age still separate
+aic0 <- stepAIC(mod0, direction = "both")
+```
+```{r}
+
+#custom/intuitive model
+mod4 <- glm(formula = Personal.Loan ~ CreditCard + Family + CD.Account + Education + Income, family = "binomial", data = edex.train)
+summary(mod4)
+
+```
+```{r}
+pred1 <- predict(mod4, edex.test, type = "response")
+pred.aic <- as.factor(if_else(pred1<0.3, 0, 1))
+table(pred.aic)
+plot(pred1)
+
+```
+
+```{r}
+library(ROCR)
+results.aic<-prediction(pred1, edex.test$Personal.Loan,label.ordering=c("0","1"))
+roc.aic = performance(results.aic, measure = "tpr", x.measure = "fpr")
+plot(roc.aic,colorize = TRUE)
+abline(a=0, b= 1)
+
+AIC(mod4)
+```
+```{r}
+library(car)
+vif(mod4)
+confusionMatrix(pred.aic, edex.test$Personal.Loan)
+
+#sanity check that age and experience suck
+vif(mod0)
+```
+More modeling but with LASSO
+```{r, eccho=FALSE}
+library(ROCR)
+pred1 <- predict(mod4, edex.test, type = "response")
+mod1 <- predict(mod1, edex.test, type = "response")
+
+results.mod0 <- prediction(mod0, edex.test$Personal.Loan,label.ordering=c(0,1))
+roc.mod0 = performance(results.mod0, measure = "tpr", x.measure = "fpr")
+
+results.mod1 <- prediction(mod1, edex.test$Personal.Loan,label.ordering=c(0,1))
+roc.mod1 = performance(results.mod1, measure = "tpr", x.measure = "fpr")
+
+results.pred1 <- prediction(pred1, edex.test$Personal.Loan,label.ordering=c(0,1))
+roc.pred1 = performance(results.pred1, measure = "tpr", x.measure = "fpr")
+
+#results.origin<-prediction(fit.pred.full,edex.test$Personal.Loan,label.ordering=c(0,1))
+#roc.origin=performance(results.origin,measure = "tpr", x.measure = "fpr")
+
+
+```
+
+```{r, echo=FALSE}
+plot(roc.mod1)
+plot(roc.pred1, col="red", add=TRUE)
+legend("bottomright",legend=c("Full", "Custom"),col=c("black","red","orange","blue"),lty=1,lwd=1)
+abline(a=0, b= 1)
+```
+
+
+***Predicting on models created***
+From Laura's code
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Predicting
+
+#setting matrix for dummy for LASSO
+dat.test.x<-model.matrix(Personal.Loan~Age+Family+Mortgage+CD.Account-1+Experience+CCAvg-1+ Personal.Loan-1+Online-1+ Income+Education+Securities.Account-1+CreditCard-1,testPL)
+
+FullLG<-glm(Personal.Loan~.,family="binomial",data=trainPL)
+fit.pred.full<-predict(FullLG,newdata=testPL,type="response")
+
+#use model created and the test set with dummies to predict!
+fit.pred.lasso <- predict(finalmodel, newx = dat.test.x, type = "response")
+
+#use model created and the test set with dummies to predict!
+fit.pred.lasso2 <- predict(finalmodel2, newx = dat.test.x, type = "response")
+
+#Making predictions for stepwise as well for later
+fit.pred.step<-predict(stepWiseAIC,newdata=testPL,type="response")
+ModelList=c()
+Sensitivitylis=c()
+Specificitylis=c()
+ModelList=append(ModelList,"Full Model")
+
+
