@@ -1,0 +1,493 @@
+---
+title: "LoanLogisticRegModel"
+author: "Laura Ahumada, Erin McClure-Price, Duy Nguyen"
+date: ""
+output: "pdf_document"
+---
+
+```{r, setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, comment=NA) 
+```
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+library(ROCR)
+library(glmnet) 
+#Load Libraries
+library(Hmisc)
+library(gridExtra)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ggthemes)
+library(class)
+library(caret)
+theme_set(theme_classic()) #Set the theme for plots
+theme_update(plot.title = element_text(hjust = 0.5))
+options(scipen=999)
+
+```
+
+
+# EDA
+#### **Looking into the data**
+
+```{r, include=FALSE}
+PersonalLoan=read.csv("~/Documents/Statistics 2/StatsProject2/Statistcs2-project-2/Bank_Personal_Loan_Modelling.csv")
+
+# 14 attributes
+dim(PersonalLoan)[2]
+print("There are 14 Columns")
+# 5000 data size
+nrow(PersonalLoan)
+print("There 5000 entries")
+# no duplicates
+any(duplicated(PersonalLoan))
+print("There are no duplicates")
+
+#No missing values
+print("No missing values")
+(sapply(PersonalLoan, function(x) all_miss=sum(is.na(x))))
+
+attach(PersonalLoan)
+head(PersonalLoan)
+```
+
+#### **Statistics**
+
++ ID can be dropped since it is not a useful predictor and just a unique identifier and will affect the results of the model
++ Age mean is 45 years old, 23 has is the lowest and 67 is the highest. There seems to be a normal distribution.
++ ***There are negative values in Experience which is odd because there can't be negative  years of experience. This will be looked at next***.
++ The mean income is 73 while the median is 64 showing skewness which seems normal representation of society. The minimum income is 8,000 and the max is 224,000. These are common Salaries
++ ZIP.Code should not be numberic they should be changed to categorical. There are 467 distinct ZIP codes
++ There seems to be an equal distribution for families size 1,2,3,4. Each are compose of about 25%
++ The CCAVG, Average Spending per 1000 goes from 0 to 10,000, however the median is 1,5000. Here we can see that there are outliers. 
++ For Education, 41% have have up to highschool, 28% up to under grad studies and interestingly 30% have up to grad school. That seems like a reasonable distribution.
++ For mortgage we can see how skewed it is, the mean is 56.5 and the median is 0. Showing the extreme outliers. **This needs to be looked at**
++ For the target variable, personal loan, we can see quite a difference, 90% without a loan and only 10% with loan. This makes sense because not many people take loan from banks
++ Securities account also has a big difference where 90% does not have a security account while 10% does
++ For CD.Account (Ceritificate deposit) once again we see the 94% does not have it while 6% has it.
++ As for online (online banking capability), 40% doe not have it while 60% has it. That distribution is a little more balanced and makes sense.
++ As for Credit card 70% does not have it while 30% has it. 
+
+
+```{r, warning = F, echo=FALSE}
+print(describe(PersonalLoan))
+summary(PersonalLoan)
+```
+
+
+##### Looking into questions obtained in the statistical analysis
+
++ ***Looking at the entries with negative experience***
++ The 52 people with negative total experience are between 23 to 29 years old and salary median of 65,000. Sound like these could just young people that just started working. We can change their negative values to 1 since they have an income, thus are are working.
+
+```{r, echo=FALSE}
+library(dplyr)
+#Verifying who are the people with negative experience 
+summary(PersonalLoan %>% select (Age,Income,Personal.Loan) %>% filter(Experience<0) )
+
+#Updating values
+PersonalLoan$Experience[PersonalLoan$Experience<0]=1
+```
+
+
++ Setting categories as factors
++ Creating a new variable called Exprience 2 due to Age and experience having a correlation of 97%. That way we can get rid of Age and Experience
+```{r}
+
+# Identification Columns (ID and ZIP.Code)
+# Droppingzip and ID as there are too many unique values and will affect the model
+PersonalLoan = PersonalLoan[-c(1,5)]
+
+# making sure yes is our targer variable
+PersonalLoan$Personal.Loan<-factor(ifelse(PersonalLoan$Personal.Loan==1,"Yes","No"),levels=c("No","Yes"))  #last level is the success
+
+# To categorical
+factor_vars = c("Family", "Education", 
+                "Securities.Account", "CD.Account", "Online", "CreditCard")
+PersonalLoan[factor_vars] = lapply(PersonalLoan[factor_vars], as.factor)
+
+PersonalLoan = PersonalLoan %>% mutate(Experience2 = Experience/Age)
+
+# getting rid of Age and Experience
+PersonalLoan = PersonalLoan[-c(1,2)] 
+names(PersonalLoan)
+```
+
++ ***Checking mortgage distribution***
++ Mortgage may need to be logged as it is very skewed.
+
+
+```{r, echo=FALSE}
+
+a=PersonalLoan %>% ggplot(aes(x=(Mortgage), color="blue")) + geom_boxplot()+ theme_classic()+ theme(legend.position="none") + ggtitle("Distribution of Mortgage")
+
+b=PersonalLoan %>% ggplot(aes(x=log(Mortgage), color="blue")) + geom_boxplot()+ theme_classic() +theme(legend.position="none")+ ggtitle("Distribution of Mortgage logged")
+grid.arrange(a,b, ncol=2)
+```
+
++ Creating another data set with Mortgage logged since logging did improve the distribution. The zero's were replaced to with 1 in order to not get infitiy when logging. Also, removing age since it has a 99% correlation with Experience, therefore only one is needed
+```{r}
+#Creating a new data set with the modified attributes
+#PersonalLoan2=mutate(PersonalLoan)
+#Updating values
+#PersonalLoan2$Mortgage[PersonalLoan2$Mortgage==0]=1
+#PersonalLoan2$MortgageLogged=log(PersonalLoan2$Mortgage)
+#PersonalLoan2=PersonalLoan2 %>% select(-Mortgage)
+#PersonalLoan2=PersonalLoan2 %>% select(-Age)
+
+```
+
+
+
+#### **Relationships and correlations**
+
++ Experience and Age has a Correlation of 99%.Too high. However, they seem to have no relationship with Loan as both, Yes loan and no loan, have correlation of 0.99 
++ **Make a plot with just loan and experience  and experience and loan**
++ CCAvg and Income has a 64% correlations and it does seems to have a relationship with Loan since there is 0.62 with no loan and .02 with yes loan 
++ The rest of the explanatory variables do not seem to have relationship between each other
+
+```{r echo=FALSE}
+library(GGally)
+ggpairs(PersonalLoan,columns = c(1,2,3,5,6,7,8),mapping=aes(colour=Personal.Loan))
+
+library(corrplot)
+numData=PersonalLoan %>% select(colnames(PersonalLoan)[!grepl('factor|logical|character',sapply(PersonalLoan,class))])
+corrplot(cor(numData), type = "upper", order = "hclust", 
+         tl.col = "black", sig.level = 0.05,insig = "blank")
+```
+
+#### **Checking realtionship between Loan (response variable) and the rest of the predictors**
+
+##### Relationship present
++ ***Income***, the more income the more changes to get a loan 
++ ***CD.Account*** (certificate of deposit) seem to have a relationship with Personal Loan. Those with personal loan tend to have CD.Account more so than those with no CD.Account
++ ***Mortgage***, people high mortgages seem to ask for loans more so thatn those with lower mortgages
++ ***Personal education***, people with up to highschool tend do not get loans as much as does with an education of higher than highschool
++     !!**there seems to be relationship with loan and education but that of education 2 and 3 seem to be very close so maybe making 2 and 3 one single category would be more helpful**!!
+
+##### Very small relationship
++ ***Security account*** and Personal Loan  seem to have slight relationship
+
+##### No relationship with response
++ ***Online and Credit card*** don't seem to have a relationship
+
+## Looking closer at each realationship to see if anything was missed
+
+```{r, echo=FALSE, warning=FALSE}
+library(GGally)
+library(car) 
+#ggpairs(numData, aes(alpha = 0.4))
+#pairs(lifeExp[,-c(1,3)],col=Status)
+
+
+# This determines green is yes.
+par(mfrow=c(2,3))
+plot(Personal.Loan~.,data=PersonalLoan, col= c("pink","lightblue"))
+
+```
+
+
+
+```{r, include=FALSE}
+# Looking deeper at relationship between Loan and Securities Account
+# There actually is a relationship
+#Loan vs securites
+a=ggplot(PersonalLoan, aes(x=Securities.Account, fill=Personal.Loan)) + geom_bar(position="dodge")+theme(legend.position="none")+ ggtitle("Security account vs Loan")
+
+b=ggplot(PersonalLoan, aes(x=Online, fill=Personal.Loan)) + geom_bar(position="dodge")+theme(legend.position="none")+ ggtitle("Online access vs Loan")
+
+c=ggplot(PersonalLoan, aes(x=CreditCard, fill=Personal.Loan)) + geom_bar(position="dodge")+theme(legend.position="none")+ ggtitle("Credit Card vs Loan")
+
+grid.arrange(a,b,c, ncol=2)
+
+```
+
+
+# Model: Objective 1
+
+
+```{r}
+# Train Test Split
+set.seed(123)
+index<-sample(1:dim(PersonalLoan)[1],round(.70 * dim(PersonalLoan)[1]))
+train<-PersonalLoan[index,]
+test<-PersonalLoan[-index,]
+
+
+# Split Predict for lasso
+dat.test.x = model.matrix(Personal.Loan ~ Income + Family + CCAvg-1 + Education + Securities.Account-1 + CD.Account-1 + Online-1 + CreditCard -1 + Experience2, test)
+
+dat.train.x = model.matrix(Personal.Loan ~ Income + Family + CCAvg-1 + Education + Securities.Account-1 + CD.Account-1 + Online-1 + CreditCard -1 + Experience2, train)
+dat.train.y = train$Personal.Loan
+
+```
+
+***Performing model with all variables, some feature selection methods (forward, stepwise, LASSO) and another based on EDA***
++ With the full model with all attributes it showed that the only important were Income, Family,CCavg, Education,Securites.Account, CD.Account, Online, CreditCard
+
++ Once Stepwise was added to the full model it selected all of those that appeared as significant in the full model:Income, Family, CCAvg, Education, Securities.Account, CD.Account, Online, CreditCard. It also selected Experience2 but that one was not significant as we had seen in the EDA.
+
++ When the forward model was added to the full model it selected the same thing as stepwise but included CCAVG which was significant and Mortgage which was not significant .
+
++ As for LASSO  it selected all of the attributes by Stepwise and included CCAvg.
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# FUNCTIONS TO PREDICT RESULTS 
+
+library(MASS)
+library(tidyverse)
+library(car)
+
+results <- function(model,bool){
+  if (bool==FALSE){
+    AIC_result=round((AIC(model)),3)
+    BIC_result=round((BIC(model)),3)
+    fit.pred<-predict(model,newdata=test,type="response")
+    class.model<-factor(ifelse(fit.pred>0.3,"Yes","No"),levels=c("No","Yes"))
+    accuracy=round((mean(class.model==test$Personal.Loan)),3)
+    Sensitivitylis=round((sensitivity(class.model, test$Personal.Loan)),3)
+    specificitlis= round((specificity(class.model, test$Personal.Loan)),3)
+  }else{
+    AIC_result=0
+    BIC_result=0
+    fit.pred.lasso = predict(model, newx = dat.test.x, type = "response")
+    class.model<-factor(ifelse(fit.pred.lasso>0.3,"Yes","No"),levels=c("No","Yes"))
+    accuracy=round((mean(class.model==test$Personal.Loan)),3)
+    Sensitivitylis=round((sensitivity(class.model, test$Personal.Loan)),3)
+    specificitlis= round((specificity(class.model,test$Personal.Loan)),3)
+  }
+  all_=c(AIC_result,BIC_result,accuracy,Sensitivitylis,specificitlis)
+  return(all_)
+ 
+}
+
+
+ROC_predict <- function(model, bool){
+  fit.pred<-predict(model,newdata=test,type="response")
+  results.model<-prediction(fit.pred, test$Personal.Loan,label.ordering=c("No","Yes"))
+  roc.model= performance(results.model, measure = "tpr", x.measure = "fpr")
+  return(roc.model)
+ 
+}
+
+```
+
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+# RUNNING ALL MODELS
+
+all_results=data.frame(Criterion=c("AIC","BIC","Accuracy","Sensitivity", "Specificity"))
+
+#FULL_MODEL
+simpleLG<-glm(Personal.Loan~.,family="binomial",data=train)
+all_results$Full_Model=results(simpleLG,FALSE)
+roc_full=ROC_predict(simpleLG)
+
+###################################################
+
+# MODEL SELECTION
+
+#STEP_WISE
+stepWiseAIC<-simpleLG %>% stepAIC(trace=FALSE, direction = "both")
+all_results$Step_Wise=results(stepWiseAIC,FALSE)
+roc_stepWiseAIC=ROC_predict(stepWiseAIC)
+
+# FORWARD
+ForwardModel <- step(simpleLG, direction = "forward", trace = FALSE)
+all_results$Forward_Model=results(ForwardModel,FALSE)
+roc_ForwardModel=ROC_predict(ForwardModel)
+
+#####################################################
+
+# LASSO
+cvfit = cv.glmnet(dat.train.x, dat.train.y, family = "binomial", type.measure = "class", nlambda = 1000)
+#coef(cvfit, s = "lambda.min")
+# Optimal penalty
+cvfit$lambda.min
+
+# Having found the optinal penalty we creat the mode
+# For final model predictions go ahead and refit lasso using entire data set
+LASSOmodel<-glmnet(dat.train.x, dat.train.y, family = "binomial",lambda=cvfit$lambda.min)
+#CF <- as.matrix(coef(LASSOmodel, LASSOmodel$lambda.1se))
+#CF[CF!=0,]
+#coef(LASSOmodel)
+
+#Predict
+all_results$LASSO_model=results(LASSOmodel,TRUE)
+
+#predict
+fit.pred.lasso <- predict(LASSOmodel, newx = dat.test.x, type = "response")
+results.lasso<-prediction(fit.pred.lasso, test$Personal.Loan,label.ordering=c("No","Yes"))
+roc.lasso = performance(results.lasso, measure = "tpr", x.measure = "fpr")
+####################################################
+
+#MODEL BASED ON INTUTION
+intuition = glm(formula = Personal.Loan ~ CreditCard + Family + CD.Account + Education + Income,
+           family = "binomial", data = train)
+all_results$Intuition=results(intuition,FALSE)
+roc_Intuition=ROC_predict(intuition)
+
+
+eda=glm(Personal.Loan~Income+ CD.Account+Mortgage+ Education + Family+ CD.Account, family = "binomial", data = train)
+all_results$EDA=results(eda,FALSE)
+roc_EDA=ROC_predict(eda)
+```
+
++ Using different threholds 
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+threshold <- function(model,bool){
+  model=stepWiseAIC
+  if (bool==FALSE){
+    fit.pred<-predict(model,newdata=test,type="response")
+  }else{
+     #for lasso
+    fit.pred = predict(model, newx = dat.test.x, type = "response")
+  }
+  
+  ModelList=c()
+  limits=c(0.3,0.5,0.7)
+  for (i in  limits){
+      lim=i
+      class.model<-factor(ifelse(fit.pred>i,"Yes","No"),levels=c("No","Yes"))
+      #confusionMatrix(class.model, test$Personal.Loan)
+      accuracy=mean(class.model==test$Personal.Loan)
+      Sensitivity=(sensitivity(class.model, test$Personal.Loan))
+      specificit= (specificity(class.model,test$Personal.Loan))
+      ModelList=append(ModelList,list(c(lim,accuracy,Sensitivity,specificit)))
+  }
+  
+  return(ModelList)
+ 
+}
+```
+
+***Changing the threshold***
+```{r, echo=FALSE}
+# Comparing stepwise with different threashold
+saving=threshold(simpleLG,FALSE)
+names(saving) <- c("0.3", "0.5", "0.7")
+print("All_Attributes")
+print("Threashhold | Accuracy| Sensitivity| Specificy")
+print(saving)
+print("--------------------------------")
+
+# Comparing simpleLG with different threashold
+saving=threshold(stepWiseAIC,FALSE)
+names(saving) <- c("0.3", "0.5", "0.7")
+print("StepWiseAIC")
+print("Threashhold | Accuracy| Sensitivity| Specificy")
+print(saving)
+print("--------------------------------")
+
+# Comparing ,ForwardModel with different threashold
+saving=threshold(ForwardModel,FALSE)
+names(saving) <- c("0.3", "0.5", "0.7")
+print("Threashhold | Accuracy| Sensitivity| Specificy")
+print("ForwardModel")
+print(saving)
+print("--------------------------------")
+
+# Comparing LASSOmodel with different threashold
+saving=threshold(LASSOmodel,TRUE)
+names(saving) <- c("0.3", "0.5", "0.7")
+print("Threashhold | Accuracy| Sensitivity| Specificy")
+print("LASSO")
+print(saving)
+print("--------------------------------")
+
+# Comparingintuition,eda with different threashold
+saving=threshold(intuition,FALSE)
+names(saving) <- c("0.3", "0.5", "0.7")
+print("Intuition")
+print("Threashhold | Accuracy| Sensitivity| Specificy")
+print(saving)
+print("--------------------------------")
+
+# Comparing eda with different threashold
+saving=threshold(eda,FALSE)
+names(saving) <- c("0.3", "0.5", "0.7")
+print("EDA")
+print("Threashhold | Accuracy| Sensitivity| Specificy")
+print(saving)
+```
+***Choosing 0.3 threshold based of the threashold results.***
+***Criterion Comparison of all models***
+```{r}
+all_results
+```
+
+
+***The ROC of models***
+
+```{r, echo=FALSE}
+plot(roc.lasso)
+plot(roc_stepWiseAIC, col="red", add=TRUE)
+plot(roc_ForwardModel,col="orange", add = TRUE)
+plot(roc_Intuition,col="blue",add=TRUE)
+plot(roc_full,col="yellow",add=TRUE)
+plot(roc_full,col="green",add=TRUE)
+legend("bottomright",legend=c("Lasso", "Stepwise","Forward","Intuition","EDA", "All Variables"),col=c("black","red","orange","blue","yellow","green"),lty=1,lwd=1)
+abline(a=0, b= 1)
+```
+
+
+
+***Verify Proportions in test and train manually***
++ Distribution in train and test do represent that of the whole data
+```{r, echo=FALSE}
+# Holding the upcoming predictions accountable
+# all propotions match
+print("All data")
+prop.table(table(PersonalLoan$Personal.Loan))
+print("Train")
+prop.table(table(train$Personal.Loan))
+print("Test")
+prop.table(table(test$Personal.Loan))
+
+# This means that, 
+# it is preffered that our predictions are 90% no loan and 10% yes loan.
+```
+
++ Assumptions via PLOTS of selected model, Stepwise and checking VIF
++ Plots look normal and there seems to be multicolinarity among variables based on VIF
+```{r}
+par(mfrow = c(1, 2))
+#Cook's Distance Plot
+plot(stepWiseAIC, 4)
+#Standardized Residuals vs Leverage
+plot(stepWiseAIC, 5)
+par(mfrow = c(1, 1))
+# vifs
+vif(stepWiseAIC)
+```
+
+
+
+
+
+# Conclusion from Part 1f
++ The best model was step setting the threshold to 0.3
+it gave an sensitivity of 94 and specificity of 72
++ Due to the imbalance of amount of people with loan and without loan we do see we do see that the model favors no loan due to it but 72 compared to the 55 specificity was a great increase. This model is about trying to predict those who will say yes to Loan therefore Specificity is important. 
++ The attributes found useful were : Income, Family,CCavg, Education,Securites.Account, CD.Account, Online, CreditCard
++ The threshold was set to 0.3 and it lead to a Sensitivity of 0.96 and specificy of 0.71
++ These were variables seen in the EDA as related to the loan.
++ Coefficients results:
+For every unit increase in income the odd of getting a loan are  e^1.06 times higher
+For every unit increase in Family the odd of getting a loan are  e^0.698209 times higher
+For every unit increase in CCAvg the odd of getting a loan are  e^0.120635 times higher
+For every unit increase in  Education  the odd of getting a loan are  e^1.713690 times higher
+For every unit increase in Securities.Account 1  the odd of getting a loan are  e^-0.937183 times less likely
+For every unit increase in CD.Account1  the odd of getting a loan are  e^3.840892 times higher
+For every unit increase in Online1 the odd of getting a loan are  e^-0.673230 times less likely
+For every unit increase in CreditCard1 the odd of getting a loan are  e^ -1.122701 times higher
+
+
+##############################################################################################3
+
+## EXTRA  code that has been commented out
+###### Re-run all models but removing age and Logging mortgage
+
