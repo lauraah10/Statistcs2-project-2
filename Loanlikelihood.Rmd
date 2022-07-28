@@ -3,6 +3,8 @@ title: "LoanLogisticRegModel"
 author: "Laura Ahumada, Erin McClure-Price, Duy Nguyen"
 date: ""
 output: "pdf_document"
+editor_options: 
+  chunk_output_type: inline
 ---
 
 ```{r, setup, include=FALSE} 
@@ -90,10 +92,40 @@ PersonalLoan$Experience[PersonalLoan$Experience<0]=1
 ```
 
 
+
+```{r, include=FALSE}
+# Creating graphs because we will change the variables to categories and this won't work
+PersonalLoan = PersonalLoan %>% mutate(Experience2 = Experience/Age)
+
+a=ggplot(PersonalLoan,aes(x=Income,y=Personal.Loan))+geom_point()+
+  geom_smooth(method="loess",size=1,span=2)+
+  ylim(-.2,1.2)
+
+b=ggplot(PersonalLoan,aes(x=CCAvg,y=Personal.Loan))+geom_point()+
+  geom_smooth(method="loess",size=1,span=2)+
+  ylim(-.2,1.2)
+
+
+c=ggplot(PersonalLoan,aes(x=(Mortgage),y=Personal.Loan))+geom_point()+
+  geom_smooth(method="loess",size=1,span=2)+
+  ylim(-.2,1.2)
+
+d=ggplot(PersonalLoan,aes(x=Experience2,y=Personal.Loan))+geom_point()+
+  geom_smooth(method="loess",size=1,span=2)+
+  ylim(-.2,1.2)
+
+e=ggplot(PersonalLoan,aes(x=Income,y=Personal.Loan))+geom_point()+
+  geom_smooth(method="loess",size=1,span=2)+
+  ylim(-.2,1.2)
+f=ggplot(PersonalLoan,aes(x=Education,y=Personal.Loan))+geom_point()+
+  geom_smooth(method="loess",size=1,span=2)+
+  ylim(-.2,1.2)
+
+```
+
 + Setting categories as factors
 + Creating a new variable called Exprience 2 due to Age and experience having a correlation of 97%. That way we can get rid of Age and Experience
-```{r}
-
+```{r,echo=FALSE}
 # Identification Columns (ID and ZIP.Code)
 # Droppingzip and ID as there are too many unique values and will affect the model
 PersonalLoan = PersonalLoan[-c(1,5)]
@@ -106,12 +138,13 @@ factor_vars = c("Family", "Education",
                 "Securities.Account", "CD.Account", "Online", "CreditCard")
 PersonalLoan[factor_vars] = lapply(PersonalLoan[factor_vars], as.factor)
 
-PersonalLoan = PersonalLoan %>% mutate(Experience2 = Experience/Age)
+# ALREADY CREATED TO DO PLOTS
+#PersonalLoan = PersonalLoan %>% mutate(Experience2 = Experience/Age)
 
 # getting rid of Age and Experience
 PersonalLoan = PersonalLoan[-c(1,2)] 
-names(PersonalLoan)
 ```
+
 
 + ***Checking mortgage distribution***
 + Mortgage may need to be logged as it is very skewed.
@@ -119,21 +152,20 @@ names(PersonalLoan)
 
 ```{r, echo=FALSE}
 
-a=PersonalLoan %>% ggplot(aes(x=(Mortgage), color="blue")) + geom_boxplot()+ theme_classic()+ theme(legend.position="none") + ggtitle("Distribution of Mortgage")
+a1=PersonalLoan %>% ggplot(aes(x=(Mortgage), color="blue")) + geom_boxplot()+ theme_classic()+ theme(legend.position="none") + ggtitle("Distribution of Mortgage")
 
-b=PersonalLoan %>% ggplot(aes(x=log(Mortgage), color="blue")) + geom_boxplot()+ theme_classic() +theme(legend.position="none")+ ggtitle("Distribution of Mortgage logged")
-grid.arrange(a,b, ncol=2)
+b1=PersonalLoan %>% ggplot(aes(x=log(Mortgage), color="blue")) + geom_boxplot()+ theme_classic() +theme(legend.position="none")+ ggtitle("Distribution of Mortgage logged")
+grid.arrange(a1,b1, ncol=2)
 ```
 
 + Creating another data set with Mortgage logged since logging did improve the distribution. The zero's were replaced to with 1 in order to not get infitiy when logging. Also, removing age since it has a 99% correlation with Experience, therefore only one is needed
 ```{r}
 #Creating a new data set with the modified attributes
-#PersonalLoan2=mutate(PersonalLoan)
+PersonalLoan2=mutate(PersonalLoan)
 #Updating values
-#PersonalLoan2$Mortgage[PersonalLoan2$Mortgage==0]=1
-#PersonalLoan2$MortgageLogged=log(PersonalLoan2$Mortgage)
+PersonalLoan2$Mortgage[PersonalLoan2$Mortgage==0]=1
+PersonalLoan2$MortgageLogged=log(PersonalLoan2$Mortgage)
 #PersonalLoan2=PersonalLoan2 %>% select(-Mortgage)
-#PersonalLoan2=PersonalLoan2 %>% select(-Age)
 
 ```
 
@@ -141,10 +173,10 @@ grid.arrange(a,b, ncol=2)
 
 #### **Relationships and correlations**
 
-+ Experience and Age has a Correlation of 99%.Too high. However, they seem to have no relationship with Loan as both, Yes loan and no loan, have correlation of 0.99 
-+ **Make a plot with just loan and experience  and experience and loan**
-+ CCAvg and Income has a 64% correlations and it does seems to have a relationship with Loan since there is 0.62 with no loan and .02 with yes loan 
++ Experience and Age has a Correlation of 99%.Too high. However, they seem to have no relationship with Loan as both; yes loan and no loan, have the same correlation with experience and age of 0.99 
++ CCAvg and Income has a 64% correlations and it does seems to have a relationship with Loan since there is 0.62 with no loan and .02 with yes loan. 
 + The rest of the explanatory variables do not seem to have relationship between each other
+
 
 ```{r echo=FALSE}
 library(GGally)
@@ -158,10 +190,13 @@ corrplot(cor(numData), type = "upper", order = "hclust",
 
 #### **Checking realtionship between Loan (response variable) and the rest of the predictors**
 
-##### Relationship present
+##### Very high Relationship present
 + ***Income***, the more income the more changes to get a loan 
++ ***Mortgage***, people high mortgages seem to ask for loans more so than those with lower mortgages
+
+
+##### Relationship present
 + ***CD.Account*** (certificate of deposit) seem to have a relationship with Personal Loan. Those with personal loan tend to have CD.Account more so than those with no CD.Account
-+ ***Mortgage***, people high mortgages seem to ask for loans more so thatn those with lower mortgages
 + ***Personal education***, people with up to highschool tend do not get loans as much as does with an education of higher than highschool
 +     !!**there seems to be relationship with loan and education but that of education 2 and 3 seem to be very close so maybe making 2 and 3 one single category would be more helpful**!!
 
@@ -173,6 +208,14 @@ corrplot(cor(numData), type = "upper", order = "hclust",
 
 ## Looking closer at each realationship to see if anything was missed
 
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+#+ ***Checking relationships  closer with loess***
+grid.arrange(a,b,c,d, ncol=2)
+grid.arrange(e,f, ncol=2)
+
+```
+
++ More detailed graph on each variable with response
 ```{r, echo=FALSE, warning=FALSE}
 library(GGally)
 library(car) 
@@ -240,6 +283,7 @@ library(tidyverse)
 library(car)
 
 results <- function(model,bool){
+
   if (bool==FALSE){
     AIC_result=round((AIC(model)),3)
     BIC_result=round((BIC(model)),3)
@@ -339,7 +383,7 @@ roc_EDA=ROC_predict(eda)
 + Using different threholds 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 threshold <- function(model,bool){
-  model=stepWiseAIC
+  
   if (bool==FALSE){
     fit.pred<-predict(model,newdata=test,type="response")
   }else{
@@ -468,7 +512,7 @@ vif(stepWiseAIC)
 
 
 
-# Conclusion from Part 1f
+# Conclusion from Part 1
 + The best model was step setting the threshold to 0.3
 it gave an sensitivity of 94 and specificity of 72
 + Due to the imbalance of amount of people with loan and without loan we do see we do see that the model favors no loan due to it but 72 compared to the 55 specificity was a great increase. This model is about trying to predict those who will say yes to Loan therefore Specificity is important. 
@@ -488,6 +532,247 @@ For every unit increase in CreditCard1 the odd of getting a loan are  e^ -1.1227
 
 ##############################################################################################3
 
-## EXTRA  code that has been commented out
-###### Re-run all models but removing age and Logging mortgage
+
+# MODEL: Part 2
+
++ Checking for interactions
++ Across all of the plots only one age with mortgage could be the ones with an interaction
+
+```{r, eccho=FALSE}
+
+library(sjPlot)    #For effect plotting
+library(sjmisc)    #For effect plotting
+library(ResourceSelection)  #Hosmer Lemeshow test
+#names(PersonalLoan)
+
+PersonalL=read.csv("~/Documents/Statistics 2/StatsProject2/Statistcs2-project-2/Bank_Personal_Loan_Modelling.csv")
+
+a=ggplot(PersonalL,aes(x=Age,y=Personal.Loan,colour=Education))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~Personal.Loan)
+
+b=ggplot(PersonalL,aes(x=Age,y=Personal.Loan,colour=Family))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~Family)
+
+c=ggplot(PersonalL,aes(x=Age,y=Personal.Loan,colour=CCAvg))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~CCAvg)
+
+d=ggplot(PersonalL,aes(x=Age,y=Personal.Loan,colour=Online))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~Online)
+
+e=ggplot(PersonalL,aes(x=Mortgage,y=Personal.Loan,colour=Family))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)
+
+
+f=ggplot(PersonalL,aes(x=Age,y=Personal.Loan,colour=CreditCard))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~CreditCard)
+
+g=ggplot(PersonalL,aes(x=Age,y=Personal.Loan,colour=Securities.Account))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~Securities.Account)
+
+grid.arrange(a,d, ncol=2)
+grid.arrange(b,e, ncol=2)
+grid.arrange(f,g, ncol=2)
+
+```
+
++ **Running the models**
++ In part 1 we saw that, Income, Family, CCAvg, CD.Account, Education and Credit Card were significant, therefore we leverage those varibles and kept mortgage (just like in part 1) based on the EDA analysis, for Part 2
+
+***Interaction***
+
++ All variables:Income, Family, CCAvg, CD.Account, Education, and Credit Card and the in the interaction of family and mortgage were significant.
++ When passing the model model through stepwise and forward it kept the all variables including the interaction and thus kept the same significant variables showing signs that the interaction is indeed useful.
++ When Anova was applied, it did show the interaction as significant 
++ The Hoslem test however showed that the model was a poor fit, yes again this is not reliable due to the size of the data (This I asked in class and Dr.Turner said we couldn't relly on this metric with big data)
+
+***Logged***
+
++ All variables were significant: Income, Family, CCAvg, CD.Account, Education, and Credit Card including the log mortgage and log income
++ Once the models were mixed, having logged income and the interaction of logged mortgage with family lead to the interaction no longer being significant however all other variable remained significant.
++ For the LDA model
+
+
+```{r, echo=FALSE}
+# Train Test Split
+index<-sample(1:dim(PersonalLoan2)[1],round(.70 * dim(PersonalLoan2)[1]))
+train<-PersonalLoan2[index,]
+test<-PersonalLoan2[-index,]
+
+
+# RUNNING ALL MODELS
+
+all_results2=data.frame(Criterion=c("AIC","BIC","Accuracy","Sensitivity", "Specificity"))
+
+#INTERACTION
+ComplexInteractionl<-glm(Personal.Loan~Securities.Account+CD.Account+CreditCard+Education+Income+CCAvg+Family*Mortgage,data=train,family="binomial")   #complex
+summary(ComplexInteractionl)
+all_results2$Interaction=results(ComplexInteractionl,FALSE)
+roc_interaction=ROC_predict(ComplexInteractionl)
+
+###########Testing if it is using yes as the refference####
+#fit.pred<-predict(ComplexInteractionl,newdata=test,type="response")
+#class.model<-factor(ifelse(fit.pred>0.3,"Yes","No"),levels=c("No","Yes"))
+#confusionMatrix(class.model,test$Personal.Loan)
+#confusionMatrix(class.model,test$Personal.Loan, positive="Yes")
+
+
+#MODEL SELCT TO FILTER
+
+#Performing stepwise to see if it keeps the interaction
+stepComplexinteraction<-ComplexInteractionl %>% stepAIC(trace=FALSE, direction="both")
+  #summary(stepComplexinteraction)
+  #Anova(stepComplexinteraction,type=3)  
+  #hoslem.test(stepComplexinteraction$y,fitted(stepComplexinteraction))
+all_results2$Interaction_stepwise=results(stepComplexinteraction,FALSE)
+roc_interactionStepwise=ROC_predict(stepComplexinteraction)
+
+interaction_Forward <- step(ComplexInteractionl, direction = "forward", trace = FALSE)
+  #summary(interaction_Forward)
+  #Anova(interaction_Forward,type=3) 
+  #hoslem.test(interaction_Forward$y,fitted(interaction_Forward))
+all_results2$InteractionForward=results(interaction_Forward,FALSE)
+roc_interactionForward=ROC_predict(interaction_Forward)
+
+#######################################
+
+# LOGGING INOCME AND USING  MORTGAGELOGGED
+Personal.Loan~Securities.Account+CD.Account+CreditCard+Education+Income+CCAvg+Family*Mortgage
+
+ComplexLog<-glm(Personal.Loan~Education+log(Income)+CCAvg+ Family+ MortgageLogged+Securities.Account+CD.Account+CreditCard,data=PersonalLoan2,family="binomial")   #complex
+#stepComplexlog<-ComplexLog %>% stepAIC(trace=FALSE) # Kept all variables
+all_results2$LogIncomeMortgage=results(ComplexLog,FALSE)
+roc_logIncomeMortgage=ROC_predict(ComplexLog)
+
+# LOGGING AND INTERACTION
+ComplexLogInteraction<-glm(Personal.Loan~Education+log(Income)+CCAvg+ Family*MortgageLogged+Securities.Account+CD.Account+CreditCard,data=PersonalLoan2,family="binomial")   #complex
+stepComplexLoginteraction<-ComplexLogInteraction %>% stepAIC(trace=FALSE)
+#Anova(ComplexLogInteraction,type=3) 
+#hoslem.test(stepComplexLoginteraction$y,fitted(stepComplexLoginteraction))
+all_results2$LogAndInteraction=results(ComplexLogInteraction,FALSE)
+roc_logAndInteraction=ROC_predict(ComplexLogInteraction)
+
+
+#LDA
+lda_<- lda( Personal.Loan ~ Income + CCAvg  + Family + Education +
+    Securities.Account + CD.Account + CreditCard + MortgageLogged, 
+    data = train)
+#myldawPrior<- lda(Personal.Loan ~ X1 + X2, data = PersonalLoan2, prior = c(.20,.80))
+pred<-predict(lda_,newdata=test)$class
+#plot(pred)
+accuracy=round((mean(pred==test$Personal.Loan)),3)
+Sensitivit=round((sensitivity(pred, test$Personal.Loan)),3)
+specificit= round((specificity(pred, test$Personal.Loan)),3)
+all_results2$LDA_model=c(0,0,accuracy,Sensitivit,specificit)
+fit.p<-predict(lda_,newdata=test)
+results.model<-prediction(fit.p$posterior[,2], test$Personal.Loan,label.ordering=c("No","Yes"))
+roc.lda_= performance(results.model, measure = "tpr", x.measure = "fpr")
+
+
+#LDA ALL VARIABLES
+lda_2<- lda( Personal.Loan ~ Income + CCAvg  + Family + Education +
+    Securities.Account + CD.Account + CreditCard + MortgageLogged + Experience2 + Online, 
+    data = train)
+#lda_2 <- lda(Personal.Loan ~ ., data = train, CV = TRUE)
+pred_lda2<-predict(lda_2,newdata=test)$class
+accuracy=round((mean(pred_lda2==test$Personal.Loan)),3)
+Sensitivit=round((sensitivity(pred_lda2, test$Personal.Loan)),3)
+specificit= round((specificity(pred_lda2, test$Personal.Loan)),3)
+all_results2$lda_2=c(0,0,accuracy,Sensitivit,specificit)
+fit.p<-predict(lda_2,newdata=test)
+results.model<-prediction(fit.p$posterior[,2], test$Personal.Loan,label.ordering=c("No","Yes"))
+roc.lda_2= performance(results.model, measure = "tpr", x.measure = "fpr")
+
+
+#QLA
+#qda_mod2 <- qda(Personal.Loan ~ ., data = train, CV = TRUE)
+#LDA
+qda_1<- qda( Personal.Loan ~ Income + CCAvg  + Education +
+    Securities.Account + CD.Account + CreditCard + MortgageLogged, 
+    data = train)
+#myldawPrior<- lda(Personal.Loan ~ X1 + X2, data = PersonalLoan2, prior = c(.20,.80))
+pred<-predict(qda_1,newdata=test)$class  
+#plot(pred)
+accuracy=round((mean(pred==test$Personal.Loan)),3)
+Sensitivit=round((sensitivity(pred, test$Personal.Loan)),3)
+specificit= round((specificity(pred, test$Personal.Loan)),3)
+all_results2$qda_1=c(0,0,accuracy,Sensitivit,specificit)
+fit.p<-predict(qda_1,newdata=test)
+results.model<-prediction(fit.p$posterior[,2], test$Personal.Loan,label.ordering=c("No","Yes"))
+roc.qda_1= performance(results.model, measure = "tpr", x.measure = "fpr")
+
+#LDA
+qda_2<- qda( Personal.Loan ~ Income + CCAvg  + Family + Education +
+    Securities.Account + CD.Account + CreditCard + MortgageLogged + Experience2 + Online, 
+    data = train)
+#myldawPrior<- lda(Personal.Loan ~ X1 + X2, data = PersonalLoan2, prior = c(.20,.80))
+pred<-predict(qda_2,newdata=test)$class  
+#plot(pred)
+accuracy=round((mean(pred==test$Personal.Loan)),3)
+Sensitivit=round((sensitivity(pred, test$Personal.Loan)),3)
+specificit= round((specificity(pred, test$Personal.Loan)),3)
+all_results2$qda_2=c(0,0,accuracy,Sensitivit,specificit)
+fit.p<-predict(qda_2,newdata=test)
+results.model<-prediction(fit.p$posterior[,2], test$Personal.Loan,label.ordering=c("No","Yes"))
+roc.qda_2= performance(results.model, measure = "tpr", x.measure = "fpr")
+
+
+```
+
+***The ROC of models***
+
+```{r, echo=FALSE}
+
+plot(roc_interaction)
+plot(roc_interactionStepwise, col="red", add=TRUE)
+plot(roc_interactionForward,col="orange", add = TRUE)
+plot(roc_logIncomeMortgage,col="blue",add=TRUE)
+plot(roc_logAndInteraction,col="yellow",add=TRUE)
+legend("bottomright",legend=c("Interaction", "InteractionStepwise","InteractionForward","LogIncomeAndMortgage","log and Interaction"),col=c("black","red","orange","blue","yellow"),lty=1,lwd=1)
+abline(a=0, b= 1)
+```
+
+```{r}
+
+plot(roc.lda_)
+plot(roc.lda_2, col="red", add=TRUE)
+plot(roc.qda_1,col="orange", add = TRUE)
+plot(roc.qda_2,col="blue",add=TRUE)
+legend("bottomright",legend=c("LDA Important Var", "LDA_allVariable","QDA important variables","QLD All variables"),col=c("black","red","orange","blue"),lty=1,lwd=1)
+abline(a=0, b= 1)
+```
+
+***Extra****
+```{r}
+
+
+# Load the library
+#library(randomForest)
+
+#randomFrst <- randomForest(Personal.Loan ~ ., data = PersonalLoan,  importance = TRUE, proximity = TRUE)
+```
+
+```{r}
+##the normalization function is created
+# nor <-function(x) { (x -min(x))/(max(x)-min(x))   }
+ 
+ ##Run nomalization on first 4 coulumns of dataset because they are the predictors
+ #iris_norm <- as.data.frame(lapply(iris[,c(1,2,3,4)], nor))
+ 
+  ##run knn function
+ #pr <- knn(iris_train,iris_test,cl=iris_target_category,k=13)
+ 
+```
 
