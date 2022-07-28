@@ -320,7 +320,7 @@ legend("bottomright", legend = c("Stepwise", "Lasso", "Erin", "Origin (Income On
 ```{r}
 model.poly.income2 = glm(formula = Personal.Loan ~ poly(Income, 2) + Family + CCAvg + Education + Securities.Account + CD.Account + Online + CreditCard, family = "binomial", data = train)
 model.poly.income3 = glm(formula = Personal.Loan ~ poly(Income, 3) + Family + CCAvg + Education + Securities.Account + CD.Account + Online + CreditCard, family = "binomial", data = train)
-model.poly.CCAvg3 = glm(formula = Personal.Loan ~ Income + Family + poly(CCAvg, 2) + Education + Securities.Account + CD.Account + Online + CreditCard, family = "binomial", data = train)
+model.poly.CCAvg2 = glm(formula = Personal.Loan ~ Income + Family + poly(CCAvg, 2) + Education + Securities.Account + CD.Account + Online + CreditCard, family = "binomial", data = train)
 model.poly.CCAvg3 = glm(formula = Personal.Loan ~ Income + Family + poly(CCAvg, 2) + Education + Securities.Account + CD.Account + Online + CreditCard, family = "binomial", data = train)
 model.poly.both2 = glm(formula = Personal.Loan ~ poly(Income, 2) + Family + poly(CCAvg, 2) + Education + Securities.Account + CD.Account + Online + CreditCard, family = "binomial", data = train)
 model.poly.both3 = glm(formula = Personal.Loan ~ poly(Income, 3) + Family + poly(CCAvg, 3) + Education + Securities.Account + CD.Account + Online + CreditCard, family = "binomial", data = train)
@@ -376,12 +376,19 @@ roc.poly.both3 = performance(results.poly.both3, measure = "tpr", x.measure = "f
 plot(roc.step, col = "red", xlim = c(0, 0.3), ylim = c(0.7, 1.0))
 plot(roc.poly.income2, col = "green", add = TRUE, xlim = c(0, 0.3), ylim = c(0.7, 1.0))
 plot(roc.poly.income3, col = "blue", add = TRUE, xlim = c(0, 0.3), ylim = c(0.7, 1.0))
-plot(roc.poly.CCAvg3, col = "blueviolet", add = TRUE, xlim = c(0, 0.3), ylim = c(0.7, 1.0))
+plot(roc.poly.CCAvg2, col = "blueviolet", add = TRUE, xlim = c(0, 0.3), ylim = c(0.7, 1.0))
 plot(roc.poly.CCAvg3, col = "aquamarine", add = TRUE, xlim = c(0, 0.3), ylim = c(0.7, 1.0))
-plot(roc.poly.both3, col = "chartreuse", add = TRUE, xlim = c(0, 0.3), ylim = c(0.7, 1.0))
+plot(roc.poly.both2, col = "chartreuse", add = TRUE, xlim = c(0, 0.3), ylim = c(0.7, 1.0))
 plot(roc.poly.both3, col = "coral", add = TRUE, xlim = c(0, 0.3), ylim = c(0.7, 1.0))
 legend("bottomright", legend = c("Stepwise", "polyincome2", "polyincome3", "polyCCAVg2", "polyCCAvg3", "polyboth2", "polyboth3"), 
        col = c("red", "green", "blue", "blueviolet", "aquamarine", "chartreuse", "coral"), 
        lty=1, lwd=1)
+
+confusionMatrix(class.poly.income2, test$Personal.Loan)$overall[1]
+confusionMatrix(class.poly.income3, test$Personal.Loan)$overall[1]
+confusionMatrix(class.poly.CCAvg2, test$Personal.Loan)$overall[1]
+confusionMatrix(class.poly.CCAvg3, test$Personal.Loan)$overall[1]
+confusionMatrix(class.poly.both2, test$Personal.Loan)$overall[1]
+confusionMatrix(class.poly.both3, test$Personal.Loan)$overall[1]
 ```
 
