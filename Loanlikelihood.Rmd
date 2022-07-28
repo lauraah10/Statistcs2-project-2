@@ -599,7 +599,7 @@ grid.arrange(f,g, ncol=2)
 + The Hoslem test however showed that the model was a poor fit, yes again this is not reliable due to the size of the data (This I asked in class and Dr.Turner said we couldn't relly on this metric with big data)
 
 ***Logged***
-
++ We logged morgage
 + All variables were significant: Income, Family, CCAvg, CD.Account, Education, and Credit Card including the log mortgage and log income
 + Once the models were mixed, having logged income and the interaction of logged mortgage with family lead to the interaction no longer being significant however all other variable remained significant.
 + LDA mode and QDA model did poorly howwever between the LDA model out performed QDA
@@ -622,13 +622,6 @@ summary(ComplexInteractionl)
 all_results2$Interaction=results(ComplexInteractionl,FALSE)
 roc_interaction=ROC_predict(ComplexInteractionl)
 
-###########Testing if it is using yes as the refference####
-#fit.pred<-predict(ComplexInteractionl,newdata=test,type="response")
-#class.model<-factor(ifelse(fit.pred>0.3,"Yes","No"),levels=c("No","Yes"))
-#confusionMatrix(class.model,test$Personal.Loan)
-#confusionMatrix(class.model,test$Personal.Loan, positive="Yes")
-
-
 #MODEL SELCT TO FILTER
 
 #Performing stepwise to see if it keeps the interaction
@@ -636,14 +629,14 @@ stepComplexinteraction<-ComplexInteractionl %>% stepAIC(trace=FALSE, direction="
   #summary(stepComplexinteraction)
   #Anova(stepComplexinteraction,type=3)  
   #hoslem.test(stepComplexinteraction$y,fitted(stepComplexinteraction))
-all_results2$stepInteraction=results(stepComplexinteraction,FALSE)
+#all_results2$stepInteraction=results(stepComplexinteraction,FALSE)
 roc_interactionStepwise=ROC_predict(stepComplexinteraction)
 
 interaction_Forward <- step(ComplexInteractionl, direction = "forward", trace = FALSE)
   #summary(interaction_Forward)
   #Anova(interaction_Forward,type=3) 
   #hoslem.test(interaction_Forward$y,fitted(interaction_Forward))
-all_results2$InteractionForward=results(interaction_Forward,FALSE)
+#all_results2$InteractionForward=results(interaction_Forward,FALSE)
 roc_interactionForward=ROC_predict(interaction_Forward)
 
 #######################################
@@ -651,13 +644,13 @@ roc_interactionForward=ROC_predict(interaction_Forward)
 # LOGGING INOCME AND USING  MORTGAGELOGGED
 Personal.Loan~Securities.Account+CD.Account+CreditCard+Education+Income+CCAvg+Family*Mortgage
 
-ComplexLog<-glm(Personal.Loan~Education+log(Income)+CCAvg+ Family+ MortgageLogged+Securities.Account+CD.Account+CreditCard,data=PersonalLoan2,family="binomial")   #complex
+ComplexLog<-glm(Personal.Loan~Education+log(Income)+CCAvg+ Family+ MortgageLogged+Securities.Account+CD.Account+CreditCard,data=train,family="binomial")   #complex
 #stepComplexlog<-ComplexLog %>% stepAIC(trace=FALSE) # Kept all variables
 all_results2$LogIncomeMortgage=results(ComplexLog,FALSE)
 roc_logIncomeMortgage=ROC_predict(ComplexLog)
 
 # LOGGING AND INTERACTION
-ComplexLogInteraction<-glm(Personal.Loan~Education+log(Income)+CCAvg+ Family*MortgageLogged+Securities.Account+CD.Account+CreditCard,data=PersonalLoan2,family="binomial")   #complex
+ComplexLogInteraction<-glm(Personal.Loan~Education+log(Income)+CCAvg+ Family*MortgageLogged+Securities.Account+CD.Account+CreditCard,data=train,family="binomial")   #complex
 stepComplexLoginteraction<-ComplexLogInteraction %>% stepAIC(trace=FALSE)
 #Anova(ComplexLogInteraction,type=3) 
 #hoslem.test(stepComplexLoginteraction$y,fitted(stepComplexLoginteraction))
@@ -690,7 +683,7 @@ pred_lda2<-predict(lda_2,newdata=test)$class
 accuracy=round((mean(pred_lda2==test$Personal.Loan)),3)
 Sensitivit=round((sensitivity(pred_lda2, test$Personal.Loan)),3)
 specificit= round((specificity(pred_lda2, test$Personal.Loan)),3)
-all_results2$lda_2=c(0,0,accuracy,Sensitivit,specificit)
+#all_results2$lda_2=c(0,0,accuracy,Sensitivit,specificit)
 fit.p<-predict(lda_2,newdata=test)
 results.model<-prediction(fit.p$posterior[,2], test$Personal.Loan,label.ordering=c("No","Yes"))
 roc.lda_2= performance(results.model, measure = "tpr", x.measure = "fpr")
@@ -708,7 +701,7 @@ pred<-predict(qda_1,newdata=test)$class
 accuracy=round((mean(pred==test$Personal.Loan)),3)
 Sensitivit=round((sensitivity(pred, test$Personal.Loan)),3)
 specificit= round((specificity(pred, test$Personal.Loan)),3)
-all_results2$qda_1=c(0,0,accuracy,Sensitivit,specificit)
+#all_results2$qda_1=c(0,0,accuracy,Sensitivit,specificit)
 fit.p<-predict(qda_1,newdata=test)
 results.model<-prediction(fit.p$posterior[,2], test$Personal.Loan,label.ordering=c("No","Yes"))
 roc.qda_1= performance(results.model, measure = "tpr", x.measure = "fpr")
@@ -752,7 +745,8 @@ plot(roc_logIncomeMortgage,col="red",add=TRUE)
 plot(roc_logAndInteraction,col="orange",add=TRUE)
 plot(roc.lda_,col="blue",add=TRUE)
 plot(roc.qda_2,col="yellow",add=TRUE)
-legend("bottomright",legend=c("Interaction", "LogIncomeAndMortgage","log and Interaction","LDA", "QDA"),col=c("black","red","orange","blue","Yellow"),lty=1,lwd=1)
+plot(roc_stepWiseAIC, col="pink", add=TRUE)
+legend("bottomright",legend=c("Interaction", "LogIncomeAndMortgage","log and Interaction","LDA", "QDA","StepWise"),col=c("black","red","orange","blue","yellow","pink"),lty=1,lwd=1)
 abline(a=0, b= 1)
 ```
 
@@ -765,11 +759,61 @@ plot(roc.qda_2,col="blue",add=TRUE)
 legend("bottomright",legend=c("LDA Important Var", "LDA_allVariable","QDA important variables","QLD All variables"),col=c("black","red","orange","blue"),lty=1,lwd=1)
 abline(a=0, b= 1)
 ```
+
 ```{r}
-all_results2 %>% select(Criterion, Interaction, LogIncomeMortgage, LogIncomeMortgage, LogAndInteraction, LDA, QDA2)
+all_results2
 
 ```
-***Extra***
+
+***Duy's model****
+```{r}
+all_results3=data.frame(Criterion=c("AIC","BIC","Accuracy","Sensitivity", "Specificity"))
+
+model.poly.income2 = glm(formula = Personal.Loan ~ poly(Income, 2) + Family + CCAvg + Education + Securities.Account + CD.Account + MortgageLogged + CreditCard, family = "binomial", data = train)
+all_results3$polyIncome2=results(model.poly.income2,FALSE)
+roc_PolyIncome2=ROC_predict(model.poly.income2)
+
+
+model.poly.income3 = glm(formula = Personal.Loan ~ poly(Income, 3) + Family + CCAvg + Education + Securities.Account + CD.Account + MortgageLogged + CreditCard, family = "binomial", data = train)
+all_results3$polyIncome3=results(model.poly.income3,FALSE)
+roc_PolyIncome3=ROC_predict(model.poly.income3)
+
+model.poly.CCAvg2 = glm(formula = Personal.Loan ~ Income + Family + poly(CCAvg, 2) + Education + Securities.Account + CD.Account + Online + MortgageLogged, family = "binomial", data = train)
+all_results3$polyCCAvg2=results(model.poly.CCAvg2,FALSE)
+roc_CCAvg2=ROC_predict(model.poly.CCAvg2)
+
+model.poly.CCAvg3 = glm(formula = Personal.Loan ~ Income + Family + poly(CCAvg, 2) + Education + Securities.Account + CD.Account + Online + MortgageLogged, family = "binomial", data = train)
+all_results3$polyCCAvg3=results(model.poly.CCAvg3,FALSE)
+roc_CCAvg3=ROC_predict(model.poly.CCAvg3)
+
+model.poly.both2 = glm(formula = Personal.Loan ~ poly(Income, 2) + Family + poly(CCAvg, 2) + Education + Securities.Account + CD.Account + MortgageLogged + CreditCard, family = "binomial", data = train)
+all_results3$PolyBoth2=results(model.poly.both2,FALSE)
+roc_PolyBoth2=ROC_predict(model.poly.both2)
+
+model.poly.both3 = glm(formula = Personal.Loan ~ poly(Income, 3) + Family + poly(CCAvg, 3) + Education + Securities.Account + CD.Account + MortgageLogged + CreditCard, family = "binomial", data = train)
+all_results3$PolyBoth3=results(model.poly.both3,FALSE)
+roc_PolyBoth3=ROC_predict(model.poly.both3)
+
+all_results3
+
+```
+
+
+
+plot(roc.poly.income2, col = "green", add = TRUE, xlim = c(0, 0.3), ylim = c(0.7, 1.0))
+plot(roc.poly.income3, col = "blue", add = TRUE, xlim = c(0, 0.3), ylim = c(0.7, 1.0))
+plot(roc.poly.CCAvg2, col = "blueviolet", add = TRUE, xlim = c(0, 0.3), ylim = c(0.7, 1.0))
+plot(roc.poly.CCAvg3, col = "aquamarine", add = TRUE, xlim = c(0, 0.3), ylim = c(0.7, 1.0))
+plot(roc.poly.both2, col = "chartreuse", add = TRUE, xlim = c(0, 0.3), ylim = c(0.7, 1.0))
+plot(roc.poly.both3, col = "coral", add = TRUE, xlim = c(0, 0.3), ylim = c(0.7, 1.0))
+legend("bottomright", legend = c( "polyincome2", "polyincome3", "polyCCAVg2", "polyCCAvg3", "polyboth2", "polyboth3"), 
+       col = c( "green", "blue", "blueviolet", "aquamarine", "chartreuse", "coral"), 
+       lty=1, lwd=1)
+
+
+
+
+
 ```{r}
 
 
