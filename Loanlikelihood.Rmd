@@ -602,7 +602,7 @@ grid.arrange(f,g, ncol=2)
 
 + All variables were significant: Income, Family, CCAvg, CD.Account, Education, and Credit Card including the log mortgage and log income
 + Once the models were mixed, having logged income and the interaction of logged mortgage with family lead to the interaction no longer being significant however all other variable remained significant.
-+ For the LDA model
++ LDA mode and QDA model did poorly howwever between the LDA model out performed QDA
 
 
 ```{r, echo=FALSE}
@@ -636,7 +636,7 @@ stepComplexinteraction<-ComplexInteractionl %>% stepAIC(trace=FALSE, direction="
   #summary(stepComplexinteraction)
   #Anova(stepComplexinteraction,type=3)  
   #hoslem.test(stepComplexinteraction$y,fitted(stepComplexinteraction))
-all_results2$Interaction_stepwise=results(stepComplexinteraction,FALSE)
+all_results2$stepInteraction=results(stepComplexinteraction,FALSE)
 roc_interactionStepwise=ROC_predict(stepComplexinteraction)
 
 interaction_Forward <- step(ComplexInteractionl, direction = "forward", trace = FALSE)
@@ -675,7 +675,7 @@ pred<-predict(lda_,newdata=test)$class
 accuracy=round((mean(pred==test$Personal.Loan)),3)
 Sensitivit=round((sensitivity(pred, test$Personal.Loan)),3)
 specificit= round((specificity(pred, test$Personal.Loan)),3)
-all_results2$LDA_model=c(0,0,accuracy,Sensitivit,specificit)
+all_results2$LDA=c(0,0,accuracy,Sensitivit,specificit)
 fit.p<-predict(lda_,newdata=test)
 results.model<-prediction(fit.p$posterior[,2], test$Personal.Loan,label.ordering=c("No","Yes"))
 roc.lda_= performance(results.model, measure = "tpr", x.measure = "fpr")
@@ -723,7 +723,7 @@ pred<-predict(qda_2,newdata=test)$class
 accuracy=round((mean(pred==test$Personal.Loan)),3)
 Sensitivit=round((sensitivity(pred, test$Personal.Loan)),3)
 specificit= round((specificity(pred, test$Personal.Loan)),3)
-all_results2$qda_2=c(0,0,accuracy,Sensitivit,specificit)
+all_results2$QDA2=c(0,0,accuracy,Sensitivit,specificit)
 fit.p<-predict(qda_2,newdata=test)
 results.model<-prediction(fit.p$posterior[,2], test$Personal.Loan,label.ordering=c("No","Yes"))
 roc.qda_2= performance(results.model, measure = "tpr", x.measure = "fpr")
@@ -731,10 +731,9 @@ roc.qda_2= performance(results.model, measure = "tpr", x.measure = "fpr")
 
 ```
 
-***The ROC of models***
++ **The ROC of models**
 
 ```{r, echo=FALSE}
-
 plot(roc_interaction)
 plot(roc_interactionStepwise, col="red", add=TRUE)
 plot(roc_interactionForward,col="orange", add = TRUE)
@@ -744,7 +743,20 @@ legend("bottomright",legend=c("Interaction", "InteractionStepwise","InteractionF
 abline(a=0, b= 1)
 ```
 
-```{r}
+
++ ***Log and interaction and log of mortage and income seemed to be the best ones ***
+```{r, echo=FALSE}
+
+plot(roc_interaction)
+plot(roc_logIncomeMortgage,col="red",add=TRUE)
+plot(roc_logAndInteraction,col="orange",add=TRUE)
+plot(roc.lda_,col="blue",add=TRUE)
+plot(roc.qda_2,col="yellow",add=TRUE)
+legend("bottomright",legend=c("Interaction", "LogIncomeAndMortgage","log and Interaction","LDA", "QDA"),col=c("black","red","orange","blue","Yellow"),lty=1,lwd=1)
+abline(a=0, b= 1)
+```
+
+```{r, include=FALSE}
 
 plot(roc.lda_)
 plot(roc.lda_2, col="red", add=TRUE)
@@ -753,8 +765,11 @@ plot(roc.qda_2,col="blue",add=TRUE)
 legend("bottomright",legend=c("LDA Important Var", "LDA_allVariable","QDA important variables","QLD All variables"),col=c("black","red","orange","blue"),lty=1,lwd=1)
 abline(a=0, b= 1)
 ```
+```{r}
+all_results2 %>% select(Criterion, Interaction, LogIncomeMortgage, LogIncomeMortgage, LogAndInteraction, LDA, QDA2)
 
-***Extra****
+```
+***Extra***
 ```{r}
 
 
