@@ -685,11 +685,11 @@ f=ggplot(PersonalL,aes(x=CCAvg,y=Personal.Loan,colour=Securities.Account))+geom_
 grid.arrange(a,f,e,d, ncol=2)
 grid.arrange(b,b0,b1,b2, ncol=2)
 
-plot_model(simpleLG,type="pred",terms=c("Education","Family","Mortgage"))
+plot_model(simpleLG,type="pred",terms=c("Education","Family","Online"))
 
-plot_model(simpleLG,type="pred",terms=c("Education","Education","Income"))
+plot_model(simpleLG,type="pred",terms=c("Education","Family","Income"))
 
-plot_model(simpleLG,type="pred",terms=c("Education","CCAvg","income"))
+plot_model(simpleLG,type="pred",terms=c("Education","CCAvg","Income"))
 
 #Education income personal loan
 #CCavg and education
@@ -701,6 +701,7 @@ plot_model(simpleLG,type="pred",terms=c("Education","CCAvg","income"))
 #Family and income
 #mortgage and family
 ```
+
 
 
 
