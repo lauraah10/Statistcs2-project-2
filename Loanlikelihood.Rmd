@@ -120,6 +120,10 @@ f=ggplot(PersonalLoan,aes(x=Education,y=Personal.Loan))+geom_point()+
   geom_smooth(method="loess",size=1,span=2)+
   ylim(-.2,1.2)
 
+#ggplot(PersonalL,aes(x=Online,y=Personal.Loan))+geom_point()+ geom_smooth(method="loess",size=1,span=2)+ facet_grid(~Personal.Loan) +
+
+#ggplot(PersonalL,aes(x=CreditCard,y=Personal.Loan))+geom_point()+ geom_smooth(method="loess",size=1,span=2)+ facet_grid(~Personal.Loan)
+
 ```
 
 + Setting categories as factors
@@ -329,8 +333,8 @@ all_results=data.frame(Criterion=c("AIC","BIC","Accuracy","Sensitivity", "Specif
 simpleLG<-glm(Personal.Loan~.,family="binomial",data=train)
 all_results$Full_Model=results(simpleLG,FALSE)
 roc_full=ROC_predict(simpleLG)
+summary(simpleLG)
 
-###################################################
 
 # MODEL SELECTION
 
@@ -535,7 +539,7 @@ For every unit increase in CreditCard1 the odd of getting a loan are  e^ -1.1227
 
 # MODEL: Part 2
 
-+ Checking for interactions
++ Checking  graphs for interactions
 + Across all of the plots only one age with mortgage showed to maybe have an interaction
 + 
 ```{r, echo=FALSE}
@@ -567,55 +571,135 @@ d=ggplot(PersonalL,aes(x=Age,y=Personal.Loan,colour=Online))+geom_point()+
   ylim(-.2,1.2)+
   facet_wrap(~Online)
 
-e=ggplot(PersonalL,aes(x=Mortgage,y=Personal.Loan,colour=Family))+geom_point()+
-  geom_smooth(method="loess",size=1,span=1.5)+
-  ylim(-.2,1.2)+
-  facet_wrap(~Family)
-
-
-f=ggplot(PersonalL,aes(x=Age,y=Personal.Loan,colour=CreditCard))+geom_point()+
+e=ggplot(PersonalL,aes(x=Age,y=Personal.Loan,colour=CreditCard))+geom_point()+
   geom_smooth(method="loess",size=1,span=1.5)+
   ylim(-.2,1.2)+
   facet_wrap(~CreditCard)
 
-g=ggplot(PersonalL,aes(x=Age,y=Personal.Loan,colour=Securities.Account))+geom_point()+
+f=ggplot(PersonalL,aes(x=Age,y=Personal.Loan,colour=Securities.Account))+geom_point()+
   geom_smooth(method="loess",size=1,span=1.5)+
   ylim(-.2,1.2)+
   facet_wrap(~Securities.Account)
 
-h=ggplot(PersonalL,aes(x=Income,y=Personal.Loan,colour=Family))+geom_point()+
-  geom_smooth(method="loess",size=1,span=1.5)+
-  ylim(-.2,1.2)+
-  facet_wrap(~Family)
 
-i=ggplot(PersonalL,aes(x=Income,y=Personal.Loan,colour=Education))+geom_point()+
-  geom_smooth(method="loess",size=1,span=1.5)+
-  ylim(-.2,1.2)+
-  facet_wrap(~Education)
+grid.arrange(a,f,e,d, ncol=2)
 
-j=ggplot(PersonalL,aes(x=Mortgage,y=Personal.Loan,colour=Education))+geom_point()+
-  geom_smooth(method="loess",size=1,span=1.5)+
-  ylim(-.2,1.2)+
-  facet_wrap(~Education)
-k=ggplot(PersonalL,aes(x=Mortgage,y=Personal.Loan,colour=Family))+geom_point()+
-  geom_smooth(method="loess",size=1,span=1.5)+
-  ylim(-.2,1.2)+
-  facet_wrap(~Family)
-
-l=ggplot(PersonalL,aes(x=CCAvg,y=Personal.Loan,colour=Family))+geom_point()+
-  geom_smooth(method="loess",size=1,span=1.5)+
-  ylim(-.2,1.2)+
-  facet_wrap(~Family)
-m=ggplot(PersonalL,aes(x=CCAvg,y=Personal.Loan,colour=Education))+geom_point()+
+#Education,Family,CCAvg,Online,CreditCard, Securities.Account
+a=ggplot(PersonalL,aes(x=Income,y=Personal.Loan,colour=Education))+geom_point()+
   geom_smooth(method="loess",size=1,span=1.5)+
   ylim(-.2,1.2)+
   facet_wrap(~Education)
 
+b0=ggplot(PersonalL,aes(x=Income,y=Personal.Loan,colour=Family))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~Family)
 
-grid.arrange(a,d,b,e, ncol=2)
-grid.arrange(f,g,h,i, ncol=2)
-grid.arrange(j,k,l,m, ncol=2)
+c=ggplot(PersonalL,aes(x=Income,y=Personal.Loan,colour=CCAvg))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~CCAvg)
 
+d=ggplot(PersonalL,aes(x=Income,y=Personal.Loan,colour=Online))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~Online)
+
+e=ggplot(PersonalL,aes(x=Income,y=Personal.Loan,colour=CreditCard))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~CreditCard)
+
+f=ggplot(PersonalL,aes(x=Income,y=Personal.Loan,colour=Securities.Account))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~Securities.Account)
+
+
+grid.arrange(a,f,e,d, ncol=2)
+
+#Education,Family,CCAvg,Online,CreditCard, Securities.Account
+a=ggplot(PersonalL,aes(x=Mortgage,y=Personal.Loan,colour=Education))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~Education)
+
+b1=ggplot(PersonalL,aes(x=Mortgage,y=Personal.Loan,colour=Family))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~Family)
+
+c=ggplot(PersonalL,aes(x=Mortgage,y=Personal.Loan,colour=CCAvg))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~CCAvg)
+
+d=ggplot(PersonalL,aes(x=Mortgage,y=Personal.Loan,colour=Online))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~Online)
+
+e=ggplot(PersonalL,aes(x=Mortgage,y=Personal.Loan,colour=CreditCard))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~CreditCard)
+
+f=ggplot(PersonalL,aes(x=Mortgage,y=Personal.Loan,colour=Securities.Account))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~Securities.Account)
+
+grid.arrange(a,f,e,d, ncol=2)
+
+#Education,Family,CCAvg,Online,CreditCard, Securities.Account
+a=ggplot(PersonalL,aes(x=CCAvg,y=Personal.Loan,colour=Education))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~Education)
+
+b2=ggplot(PersonalL,aes(x=CCAvg,y=Personal.Loan,colour=Family))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~Family)
+
+c=ggplot(PersonalL,aes(x=CCAvg,y=Personal.Loan,colour=CCAvg))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~CCAvg)
+
+d=ggplot(PersonalL,aes(x=CCAvg,y=Personal.Loan,colour=Online))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~Online)
+
+e=ggplot(PersonalL,aes(x=CCAvg,y=Personal.Loan,colour=CreditCard))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~CreditCard)
+
+f=ggplot(PersonalL,aes(x=CCAvg,y=Personal.Loan,colour=Securities.Account))+geom_point()+
+  geom_smooth(method="loess",size=1,span=1.5)+
+  ylim(-.2,1.2)+
+  facet_wrap(~Securities.Account)
+
+grid.arrange(a,f,e,d, ncol=2)
+grid.arrange(b,b0,b1,b2, ncol=2)
+
+plot_model(simpleLG,type="pred",terms=c("Education","Family","Mortgage"))
+
+plot_model(simpleLG,type="pred",terms=c("Education","Education","Income"))
+
+plot_model(simpleLG,type="pred",terms=c("Education","CCAvg","income"))
+
+#Education income personal loan
+#CCavg and education
+#Mortgage and Credit Card
+#Education and Mortgage
+#Education and CCAvg
+#income and family
+#Family and CCAvg
+#Family and income
+#mortgage and family
 ```
 
 
@@ -659,13 +743,18 @@ index<-sample(1:dim(PersonalLoan2)[1],round(.70 * dim(PersonalLoan2)[1]))
 train<-PersonalLoan2[index,]
 test<-PersonalLoan2[-index,]
 
-
 # RUNNING ALL MODELS
-
+#setting up the data frame for criterion
 all_results2=data.frame(Criterion=c("AIC","BIC","Accuracy","Sensitivity", "Specificity"))
 
 #INTERACTION
 ComplexInteractionl<-glm(Personal.Loan~Securities.Account+CD.Account+CreditCard+Education+Income+CCAvg+Family*Mortgage,data=train,family="binomial")   #complex
+#summary(ComplexInteractionl)
+all_results2$Interaction=results(ComplexInteractionl,FALSE)
+roc_interaction=ROC_predict(ComplexInteractionl)
+
+#INTERACTION with MORTGAGE
+ComplexInteractionl2<-glm(Personal.Loan~Securities.Account+CD.Account+CreditCard+Education+Income+CCAvg+Education*Mortgage,data=train,family="binomial")   #complex
 #summary(ComplexInteractionl)
 all_results2$Interaction=results(ComplexInteractionl,FALSE)
 roc_interaction=ROC_predict(ComplexInteractionl)
@@ -794,6 +883,12 @@ model.poly.both3 = glm(formula = Personal.Loan ~ poly(Income, 3) + Family + poly
 all_results3$PolyBoth3=results(model.poly.both3,FALSE)
 roc_PolyBoth3=ROC_predict(model.poly.both3)
 
+
+#extra model 
+extrememodel= glm(formula = Personal.Loan ~ poly(log(Income), 3) + Family*MortgageLogged + poly(CCAvg, 3) + Education + Securities.Account + CD.Account + Online + CreditCard, family = "binomial", data = train)
+all_results3$ExtremexModel=results(extrememodel,FALSE)
+roc_extreme=ROC_predict(model.poly.both3)
+
 ```
 
 + **The ROC of models**
@@ -818,9 +913,9 @@ abline(a=0, b= 1)
 ```
 
 
-+ ***Log and interaction and log of mortage and income seemed to be the best ones from the interaction, logs and LDA ***
++ ***Log and interaction and log of Mortage and income seemed to be the best ones from the interaction, logs and LDA ***
 
-```{r, echo=FALSE}
+```{r, include=FALSE}
 
 plot(roc_interaction)
 plot(roc_logIncomeMortgage,col="red",add=TRUE)
@@ -862,8 +957,9 @@ plot(roc_logIncomeMortgage, col = "blueviolet", add = TRUE, xlim = c(0, 0.3), yl
 plot(roc_logAndInteraction, col = "aquamarine", add = TRUE, xlim = c(0, 0.3), ylim = c(0.7, 1.0))
 plot(roc_PolyIncome3, col = "blue", add = TRUE, xlim = c(0, 0.3), ylim = c(0.7, 1.0))
 plot(roc_PolyBoth3, col = "coral", add = TRUE, xlim = c(0, 0.3), ylim = c(0.7, 1.0))
-legend("bottomright", legend = c( "StepWise", "LogIncome&Mortgage", "Log&interaction", "polyIncome3", "PolyBoth3"), 
-       col = c( "chartreuse", "blueviolet", "aquamarine", "blue", "coral"), 
+plot(roc_extreme, col = "greenyellow", add = TRUE, xlim = c(0, 0.3), ylim = c(0.7, 1.0))
+legend("bottomright", legend = c( "StepWise", "LogIncome&Mortgage", "Log&interaction", "polyIncome3", "PolyBoth3", "complexmoel"), 
+       col = c( "chartreuse", "blueviolet", "aquamarine", "blue", "coral","greenyellow"), 
        lty=1, lwd=1)
 abline(a=0, b= 1)
 ```
@@ -890,6 +986,7 @@ all_results3
 ```
 
 # Conclusion
+
 ```{r}
 
 
