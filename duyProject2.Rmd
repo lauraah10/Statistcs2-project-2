@@ -177,7 +177,7 @@ class.step = as.factor(if_else(pred.step < step.cutoff, "No", "Yes"))
 prop.table(table(class.step))
 
 # Confusion Matrix
-confusionMatrix(class.step, test$Personal.Loan, positive = "Yes")
+confusionMatrix(class.step, test$Personal.Loan)
                           #  Threshold   = 0.426
                           #  Accuracy    = 0.968
                           #  Sensitivity = 0.7613
@@ -282,7 +282,7 @@ conf.lasso
 sum(diag(conf.lasso))/sum(conf.lasso)
 
 # Sensitivity & Specificity of LASSO
-cm = confusionMatrix(class.lasso, test$Personal.Loan, positive = "Yes")
+cm = confusionMatrix(class.lasso, test$Personal.Loan)
 cm$byClass
                           #  Threshold   = 0.44
                           #  Accuracy    = 0.9633
@@ -305,7 +305,7 @@ pred.erin = predict(mod.erin, test, type = "response")
 erin.cutoff = 0.5
 class.erin = as.factor(if_else(pred.erin < erin.cutoff, "No", "Yes"))
 prop.table(table(class.erin))
-confusionMatrix(class.erin, test$Personal.Loan, positive = "Yes")
+confusionMatrix(class.erin, test$Personal.Loan)
                           #  Threshold   = 0.5
                           #  Accuracy    = 0.9593
                           #  Sensitivity = 0.6516
@@ -322,7 +322,7 @@ pred.income = predict(model_income, test, type = "response")
 income.cutoff = 0.3
 class.income = as.factor(if_else(pred.income < income.cutoff, "No", "Yes"))
 prop.table(table(class.income))
-confusionMatrix(class.income, test$Personal.Loan, positive = "Yes")
+confusionMatrix(class.income, test$Personal.Loan)
                           #  Threshold   = 0.3
                           #  Accuracy    = 0.8933
                           #  Sensitivity = 0.5290
@@ -486,7 +486,7 @@ final0.cutoff = 0.4
 class.final0 = as.factor(if_else(pred.final0 < final0.cutoff, "No", "Yes"))
 prop.table(table(class.final0))
 ## Confusion Matrix
-confusionMatrix(class.final0, final_test$Personal.Loan, positive = "Yes")
+confusionMatrix(class.final0, final_test$Personal.Loan)
                           #  Threshold   = 0.4
                           #  Accuracy    = 0.968
                           #  Sensitivity = 0.76774
@@ -510,7 +510,7 @@ final0a.cutoff = 0.33
 class.final0a = as.factor(if_else(pred.final0a < final0a.cutoff, "No", "Yes"))
 prop.table(table(class.final0a))
 ## Confusion Matrix
-confusionMatrix(class.final0a, final_test$Personal.Loan, positive = "Yes")
+confusionMatrix(class.final0a, final_test$Personal.Loan)
                           #  Threshold   = 0.33
                           #  Accuracy    = 0.972
                           #  Sensitivity = 0.89677
@@ -535,7 +535,7 @@ final1.cutoff = 0.4
 class.final1 = as.factor(if_else(pred.final1 < final1.cutoff, "No", "Yes"))
 prop.table(table(class.final1))
 ## Confusion Matrix
-confusionMatrix(class.final1, final_test$Personal.Loan, positive = "Yes")
+confusionMatrix(class.final1, final_test$Personal.Loan)
                           #  Threshold   = 0.4
                           #  Accuracy    = 0.9673
                           #  Sensitivity = 0.77419
@@ -560,7 +560,7 @@ final1a.cutoff = 0.33
 class.final1a = as.factor(if_else(pred.final1a < final1a.cutoff, "No", "Yes"))
 prop.table(table(class.final1a))
 ## Confusion Matrix
-confusionMatrix(class.final1a, final_test$Personal.Loan, positive = "Yes")
+confusionMatrix(class.final1a, final_test$Personal.Loan)
                           #  Threshold   = 0.33
                           #  Accuracy    = 0.972
                           #  Sensitivity = 0.89677
@@ -697,7 +697,7 @@ final2.cutoff = 0.34
 class.final2 = as.factor(if_else(pred.final2 < final2.cutoff, "No", "Yes"))
 prop.table(table(class.final2))
 ## Confusion Matrix
-confusionMatrix(class.final2, final_test$Personal.Loan, positive = "Yes")
+confusionMatrix(class.final2, final_test$Personal.Loan)
                           #  Threshold   = 0.34
                           #  Accuracy    = 0.974
                           #  Sensitivity = 0.90323
@@ -722,7 +722,7 @@ final2a.cutoff = 0.28
 class.final2a = as.factor(if_else(pred.final2a < final2a.cutoff, "No", "Yes"))
 prop.table(table(class.final2a))
 ## Confusion Matrix
-confusionMatrix(class.final2a, final_test$Personal.Loan, positive = "Yes")
+confusionMatrix(class.final2a, final_test$Personal.Loan)
                           #  Threshold   = 0.28
                           #  Accuracy    = 0.972
                           #  Sensitivity = 0.91613
@@ -738,7 +738,7 @@ mod_fit <- train(Personal.Loan ~ poly(Income, 3) + Family + Income*Family + CCAv
                  method = "glm", family = "binomial",
                  trControl = ctrl, tuneLength = 5)
 pred.final2b = predict(mod_fit, newdata = final_test)
-confusionMatrix(data=pred.final2b, final_test$Personal.Loan, positive = "Yes")
+confusionMatrix(data=pred.final2b, final_test$Personal.Loan)
                           #  Accuracy    = 0.9787
                           #  Sensitivity = 0.8516
                           #  Specificity = 0.9933
@@ -794,8 +794,7 @@ LDA.model = lda(Personal.Loan ~ ., LDA_train)
 LDA.model
 
 # Criteria
-fit.p<-predict(LDA.model, newdata=test)$class
-confusionMatrix(data=fit.p, test$Personal.Loan, positive = "Yes")
+fit.p<-predict(LDA.model, newdata=test)
 str(fit.p)
 
 # ROC Curves
