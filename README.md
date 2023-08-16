@@ -3,7 +3,8 @@
 
 Objective:
 The classification goal is to predict the likelihood of a liability customer buying personal loans.
-**Results located in Loanlikelihood.pdf**
+
+- Results located in Loanlikelihood.pdf
 
 Data Description:
 Thera Bank Personal Loan Campaign Data Description:
